@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, ClipboardList, ContactRound, FileSignature, Files, ListChecks, ReceiptText, CircleCheckBig } from 'lucide-react'
+import { ArrowLeft, ChevronRight, ClipboardList, ContactRound, FileSignature, ListChecks, ReceiptText, CircleCheckBig } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CustomerContactsTab } from '../../components/customers/contacts/CustomerContactsTab'
 import { CustomerOverviewTab } from '../../components/customers/CustomerOverviewTab'
@@ -11,6 +11,7 @@ import { CustomerQuotationsTab } from '../../components/customers/quotations/Cus
 import { CustomerContractsTab } from '../../components/customers/contracts/CustomerContractsTab'
 import { CustomerAppointmentsTab } from '../../components/customers/appointments/CustomerAppointmentsTab'
 import { AppointmentCalendarInteractions } from '../../components/customers/appointments/AppointmentCalendarInteractions'
+import { CustomerDocumentsTab } from '../../components/customers/documents/CustomerDocumentsTab'
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
 import { profileTabs, profileTabSlugs, type ProfileTab } from '../../data/customerProfileTabs'
@@ -21,8 +22,7 @@ import { sortAppointments } from '../../utils/appointmentSorting'
 
 interface CustomerProfilePageProps { onNotify: (message: string) => void }
 
-const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Contacts' | 'Service Requests' | 'Quotations' | 'Contracts' | 'Transaction History' | 'Appointments'>, { icon: typeof ContactRound; description: string }> = {
-  Documents: { icon: Files, description: 'Manage documents associated with this customer.' },
+const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Contacts' | 'Service Requests' | 'Quotations' | 'Contracts' | 'Transaction History' | 'Appointments' | 'Documents'>, { icon: typeof ContactRound; description: string }> = {
   'Activity Log': { icon: ListChecks, description: 'Review the complete customer activity record.' },
 }
 
@@ -72,7 +72,8 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
         {activeTab === 'Contracts' && <CustomerContractsTab customer={customer} onNotify={onNotify} />}
         {activeTab === 'Transaction History' && <><header className="transaction-history-header"><h2>Transaction History</h2></header><CustomerTransactionHistoryTab customer={customer} onNotify={onNotify} /></>}
         {activeTab === 'Appointments' && <><CustomerAppointmentsTab customer={customer} onNotify={onNotify} /><AppointmentCalendarInteractions customerId={customer.id} /></>}
-        {activeTab !== 'Overview' && activeTab !== 'Contacts' && activeTab !== 'Service Requests' && activeTab !== 'Quotations' && activeTab !== 'Contracts' && activeTab !== 'Transaction History' && activeTab !== 'Appointments' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
+        {activeTab === 'Documents' && <CustomerDocumentsTab customer={customer} onNotify={onNotify} />}
+        {activeTab === 'Activity Log' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
       </div>
     </div>
   </div>
