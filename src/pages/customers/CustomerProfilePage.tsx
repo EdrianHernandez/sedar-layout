@@ -40,7 +40,6 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
   return <div className="customer-profile-page">
     <div className="profile-navigation">
       <nav aria-label="Breadcrumb"><ol><li><Link to="/marketing/customers">Customers</Link></li><li><ChevronRight size={12} aria-hidden="true" /></li><li aria-current="page">{customer.companyName}</li></ol></nav>
-      <Link to="/marketing/customers"><ArrowLeft size={14} />Back to Customers</Link>
     </div>
     <CustomerProfileHeader customer={customer} onNotify={onNotify} />
     <section className="metrics-grid profile-metrics" aria-label="Customer relationship summary">
