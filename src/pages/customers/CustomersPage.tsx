@@ -74,7 +74,7 @@ export function CustomersPage({ onNotify }: CustomersPageProps) {
         </div>
       </header>
 
-      <section className="metrics-grid" aria-label="Customer metrics">
+      <section className="metrics-grid customer-metrics" aria-label="Customer metrics">
         <MetricCard label="TOTAL CUSTOMERS" value={customers.length} icon={Users} />
         <MetricCard label="ACTIVE CUSTOMERS" value={customers.filter((customer) => customer.status === 'Active').length} icon={UserCheck} />
         <MetricCard label="PROSPECTIVE CUSTOMERS" value={customers.filter((customer) => customer.status === 'Prospect').length} icon={UserPlus} />

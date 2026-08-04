@@ -70,6 +70,8 @@ button:focus-visible { outline: 2px solid #ff8b77; outline-offset: 2px; }
 .dashboard-header { min-height: 76px; padding: 17px 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .dashboard-header h1 { margin: 0; font-size: 20px; line-height: 1.2; }
 .dashboard-header p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+.customers-page .dashboard-header h1 { font-size: 24px; font-weight: 700; line-height: 1.15; }
+.customers-page .dashboard-header p { margin-top: 6px; }
 .header-actions { display: flex; gap: 8px; }
 .button { min-height: 32px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 5px; font-size: 9px; font-weight: 700; cursor: pointer; }
 .button-primary { border: 1px solid var(--orange); color: #fff; background: var(--orange); }
@@ -82,6 +84,12 @@ button:focus-visible { outline: 2px solid #ff8b77; outline-offset: 2px; }
 .metric-value { position: relative; z-index: 1; display: block; margin-top: 16px; font-size: 29px; line-height: 1; }
 .metric-detail { position: relative; z-index: 1; display: block; margin-top: 12px; color: #f00000; font-size: 9px; font-weight: 700; }
 .metric-icon { position: absolute; right: -4px; bottom: -12px; width: 79px; height: 79px; color: var(--icon); opacity: .95; }
+.customer-metrics { gap: 10px; }
+.customer-metrics .metric-card { height: 110px; padding: 16px 18px; border-color: #234766; background: var(--sidebar); box-shadow: 0 5px 14px rgba(6,29,55,.13); transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.customer-metrics .metric-card:hover { border-color: #416580; box-shadow: 0 8px 19px rgba(6,29,55,.18); transform: translateY(-1px); }
+.customer-metrics .metric-label { color: #b8c8d5; letter-spacing: .07em; }
+.customer-metrics .metric-value { margin-top: 12px; color: #fff; font-size: 28px; }
+.customer-metrics .metric-icon { right: 6px; bottom: -9px; width: 61px; height: 61px; color: #b8cddd; opacity: .2; }
 .panels-grid { margin-top: 15px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(255px, 1fr); gap: 13px; align-items: stretch; }
 .panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
 .panel-header { min-height: 55px; padding: 0 17px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #ddd; }
