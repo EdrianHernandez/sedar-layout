@@ -1003,15 +1003,10 @@ td { border-top: 1px solid #e2e2e2; }
 .document-badge-active, .document-badge-fulfilled, .document-badge-customer-visible, .document-badge-current { border-color: #b8ddce; color: #176346; background: #edf8f3; }
 .document-badge-expired, .document-badge-pending { border-color: #ead4a5; color: #80570d; background: #fff8e8; }
 .document-badge-archived, .document-badge-cancelled, .document-badge-internal { color: #626f77; background: #edf1f3; }
-.document-actions { position: relative; }
-.document-actions summary { width: 31px; height: 29px; border-radius: 4px; display: grid; place-items: center; cursor: pointer; list-style: none; }
-.document-actions summary::-webkit-details-marker { display: none; }
-.document-actions[open] summary { background: #edf2f5; }
-.document-actions > div { position: absolute; z-index: 20; top: 32px; right: 0; width: 190px; padding: 5px; border: 1px solid #d9e0e4; border-radius: 6px; background: #fff; box-shadow: 0 10px 28px #20374724; }
-.document-actions button { width: 100%; min-height: 31px; padding: 0 8px; border: 0; border-radius: 3px; display: flex; align-items: center; gap: 7px; color: #324754; background: transparent; font-size: 10px; text-align: left; }
-.document-actions button:hover { background: #f1f5f7; }
-.document-actions .menu-danger { color: #a33a35; }
-.document-actions p { margin: 5px; padding: 7px; color: #798790; background: #f5f7f8; font-size: 9px; }
+.document-action-menu { width: 200px; max-height: calc(100vh - 16px); overflow-y: auto; }
+.document-action-menu button { display: flex; align-items: center; gap: 7px; }
+.document-action-menu .menu-danger { color: #a33a35; }
+.document-action-menu p { margin: 5px; padding: 7px; border-radius: 4px; color: #798790; background: #f5f7f8; font-size: 8px; line-height: 1.4; }
 .document-empty { min-height: 240px; display: grid; place-items: center; align-content: center; gap: 10px; color: #82909a; text-align: center; }
 .document-empty h3 { margin: 0; color: #334b5a; font-size: 14px; }
 .document-pagination { padding: 10px 12px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 10px; }
