@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Building2, CalendarClock, ChevronRight, FileText, Paperclip, ShieldCheck, Ship, Trash2, UploadCloud } from 'lucide-react'
+import { BriefcaseBusiness, Building2, CalendarClock, ChevronRight, FileText, Paperclip, Save, Send, ShieldCheck, Ship, Trash2, UploadCloud } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DiscardChangesDialog } from '../../components/service-requests/DiscardChangesDialog'
@@ -128,7 +128,7 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
 
   return <div className="new-request-page">
     <nav className="request-breadcrumb" aria-label="Breadcrumb"><ol>{originCustomer ? <><li><Link to="/marketing/customers">Customers</Link></li><li><ChevronRight size={12} /></li><li><Link to={`/marketing/customers/${originCustomer.id}`}>{originCustomer.companyName}</Link></li></> : <li><Link to="/marketing/service-requests">Service Requests</Link></li>}<li><ChevronRight size={12} /></li><li aria-current="page">New Service Request</li></ol></nav>
-    <header className="request-page-header"><div><span className="new-request-badge">New</span><h1>New Service Request</h1><p>Create a tug-service request for customer evaluation and operational review.</p></div></header>
+    <header className="request-page-header"><div><span className="new-request-badge">Service Request</span><h1>New Service Request</h1><p>Create a tug-service request for customer evaluation and operational review.</p></div></header>
     {formMessage && <div className="request-form-alert" role="alert">{formMessage}</div>}
     <form onSubmit={(event: FormEvent) => { event.preventDefault(); createRequest('Under Review') }} noValidate>
       <RequestSection icon={Building2} title="Customer Information" description="Select the requesting customer and primary contact."><div className="request-form-grid">
@@ -158,7 +158,7 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
 
       <RequestSection icon={BriefcaseBusiness} title="Internal Assignment" description="Marketing-only ownership and follow-up information."><div className="internal-request-label">Internal – Not visible to the customer</div><div className="request-form-grid"><RequestField name="assignedRepresentative" label="Assigned Marketing Representative" value={form.assignedRepresentative} error={errors.assignedRepresentative} required options={representatives} onChange={update} /><RequestField name="operationsReviewer" label="Requested Operations Reviewer" value={form.operationsReviewer} onChange={update} /><RequestField name="internalTags" label="Internal Tags" value={form.internalTags} placeholder="Separate tags with commas" onChange={update} /><RequestField name="followUpDate" label="Follow-up Date" value={form.followUpDate} type="date" onChange={update} /><RequestField name="internalNotes" label="Internal Notes" value={form.internalNotes} wide rows={4} onChange={update} /></div></RequestSection>
 
-      <footer className="request-form-actions"><p>All required fields must be completed before submission.</p><div><button className="button button-secondary" type="button" onClick={cancel}>Cancel</button><button className="button button-secondary" type="button" onClick={() => createRequest('Draft')}>Save as Draft</button><button className="button button-primary" type="submit">Submit for Review</button></div></footer>
+      <footer className="request-form-actions"><div className="request-action-summary"><p>All required fields must be completed before submission.</p></div><div className="request-action-controls"><button className="button request-cancel-button" type="button" onClick={cancel}>Cancel</button><button className="button button-secondary" type="button" onClick={() => createRequest('Draft')}><Save size={14} />Save as Draft</button><button className="button button-primary" type="submit"><Send size={14} />Submit for Review</button></div></footer>
     </form>
     {discardOpen && <DiscardChangesDialog onContinue={() => setDiscardOpen(false)} onDiscard={() => navigate(cancelTarget)} />}
   </div>
