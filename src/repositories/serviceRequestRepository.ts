@@ -1,5 +1,6 @@
 import { initialServiceRequests } from '../data/serviceRequestMockData'
 import type { ServiceRequest } from '../types/serviceRequest'
+import { generateServiceRequestReference } from '../utils/generateServiceRequestReference'
 
 const STORAGE_KEY = 'sedar-marketing-service-requests'
 
@@ -23,6 +24,9 @@ export const serviceRequestRepository = {
   findById(id: string): ServiceRequest | undefined {
     return this.getAll().find((request) => request.id === id)
   },
+  getByCustomerId(customerId: string): ServiceRequest[] {
+    return this.getAll().filter((request) => request.customerId === customerId)
+  },
   save(request: ServiceRequest): void {
     const requests = this.getAll()
     const index = requests.findIndex((item) => item.id === request.id)
@@ -30,5 +34,40 @@ export const serviceRequestRepository = {
     else requests.unshift(request)
     // Prototype metadata storage only. Replace this repository with the real decentralized backend.
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
+  },
+  update(id: string, changes: Partial<ServiceRequest>): ServiceRequest | undefined {
+    const request = this.findById(id)
+    if (!request) return undefined
+    const updated = { ...request, ...changes, id: request.id, updatedAt: new Date().toISOString() }
+    this.save(updated)
+    return updated
+  },
+  duplicate(id: string): ServiceRequest | undefined {
+    const source = this.findById(id)
+    if (!source) return undefined
+    const now = new Date().toISOString()
+    const requests = this.getAll()
+    const duplicated: ServiceRequest = {
+      id: globalThis.crypto?.randomUUID?.() ?? `REQ-${Date.now()}`,
+      referenceNumber: generateServiceRequestReference(requests),
+      customerId: source.customerId,
+      contactId: source.contactId,
+      requestSource: source.requestSource,
+      vessel: { ...source.vessel },
+      service: { ...source.service },
+      schedule: { ...source.schedule, requestedDate: '', requestedTime: '', estimatedCompletionDate: undefined, estimatedCompletionTime: undefined },
+      operations: {},
+      priority: 'Normal',
+      assignedMarketingRepresentative: source.assignedMarketingRepresentative,
+      internalTags: [],
+      status: 'Draft',
+      createdAt: now,
+      updatedAt: now,
+    }
+    this.save(duplicated)
+    return duplicated
+  },
+  cancel(id: string, reason: string, explanation?: string): ServiceRequest | undefined {
+    return this.update(id, { status: 'Cancelled', cancellationReason: reason, cancellationExplanation: explanation, cancelledAt: new Date().toISOString() })
   },
 }

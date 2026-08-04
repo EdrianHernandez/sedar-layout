@@ -18,6 +18,9 @@ export interface ServiceRequest {
   internalNotes?: string
   followUpDate?: string
   status: ServiceRequestStatus
+  cancellationReason?: string
+  cancellationExplanation?: string
+  cancelledAt?: string
   createdAt: string
   updatedAt: string
 }

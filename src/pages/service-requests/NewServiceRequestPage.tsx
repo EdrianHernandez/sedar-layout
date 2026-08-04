@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DiscardChangesDialog } from '../../components/service-requests/DiscardChangesDialog'
 import { CustomerStatusBadge } from '../../components/customers/CustomerStatusBadge'
 import { initialCustomers } from '../../data/customerMockData'
+import { SERVICE_PRIORITIES, SERVICE_TYPES } from '../../data/serviceRequestOptions'
 import { customerContactRepository } from '../../repositories/customerContactRepository'
 import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 import type { ServicePriority, ServiceRequest, ServiceRequestStatus } from '../../types/serviceRequest'
@@ -14,10 +15,9 @@ type FormState = Record<string, string>
 type Errors = Record<string, string>
 
 const vesselTypes = ['Cargo Ship', 'Container Ship', 'Bulk Carrier', 'Tanker', 'Passenger Vessel', 'Barge', 'Fishing Vessel', 'Offshore Vessel', 'Other']
-const serviceTypes = ['Harbor Towage', 'Docking Assistance', 'Undocking Assistance', 'Tug Escort', 'Barge Towing', 'Emergency Towing', 'Standby Tug Service', 'Inter-island Towage', 'Marine Support Service', 'Other']
 const requestSources = ['Customer Inquiry', 'Phone Call', 'Email', 'Walk-in', 'Referral', 'Existing Contract', 'Other']
 const flexibilityOptions = ['Fixed Schedule', 'Flexible by 1 Hour', 'Flexible by 3 Hours', 'Flexible Within the Day', 'To Be Confirmed']
-const priorities: ServicePriority[] = ['Normal', 'High', 'Urgent', 'Emergency']
+const priorities: ServicePriority[] = SERVICE_PRIORITIES
 const representatives = [...new Set(initialCustomers.map((customer) => customer.assignedRepresentative))].sort()
 const today = new Date().toISOString().slice(0, 10)
 
@@ -149,7 +149,7 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
       </div></RequestSection>
 
       <RequestSection icon={FileText} title="Service Details" description="Describe the tug service and commercial references."><div className="request-form-grid">
-        <RequestField name="serviceType" label="Service Type" value={form.serviceType} error={errors.serviceType} required options={serviceTypes} onChange={update} /><RequestField name="tugboatsRequired" label="Number of Tugboats Required" value={form.tugboatsRequired} error={errors.tugboatsRequired} required type="number" min="1" step="1" onChange={update} /><RequestField name="preferredTugClass" label="Preferred Tugboat or Tug Class" value={form.preferredTugClass} onChange={update} /><RequestField name="estimatedDuration" label="Estimated Service Duration" value={form.estimatedDuration} onChange={update} /><RequestField name="contractReference" label="Contract Reference" value={form.contractReference} onChange={update} /><RequestField name="purchaseOrderReference" label="Customer Purchase Order Reference" value={form.purchaseOrderReference} onChange={update} /><RequestField name="serviceDescription" label="Service Description" value={form.serviceDescription} error={errors.serviceDescription} required wide rows={4} placeholder="Describe the requested tug service and expected assistance." onChange={update} />
+        <RequestField name="serviceType" label="Service Type" value={form.serviceType} error={errors.serviceType} required options={SERVICE_TYPES} onChange={update} /><RequestField name="tugboatsRequired" label="Number of Tugboats Required" value={form.tugboatsRequired} error={errors.tugboatsRequired} required type="number" min="1" step="1" onChange={update} /><RequestField name="preferredTugClass" label="Preferred Tugboat or Tug Class" value={form.preferredTugClass} onChange={update} /><RequestField name="estimatedDuration" label="Estimated Service Duration" value={form.estimatedDuration} onChange={update} /><RequestField name="contractReference" label="Contract Reference" value={form.contractReference} onChange={update} /><RequestField name="purchaseOrderReference" label="Customer Purchase Order Reference" value={form.purchaseOrderReference} onChange={update} /><RequestField name="serviceDescription" label="Service Description" value={form.serviceDescription} error={errors.serviceDescription} required wide rows={4} placeholder="Describe the requested tug service and expected assistance." onChange={update} />
       </div></RequestSection>
 
       <RequestSection icon={CalendarClock} title="Schedule and Location" description="Define the requested operating window and movement locations."><div className="request-form-grid">

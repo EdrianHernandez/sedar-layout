@@ -6,6 +6,7 @@ import { CustomerProfileHeader } from '../../components/customers/CustomerProfil
 import { CustomerProfileTabs } from '../../components/customers/CustomerProfileTabs'
 import { CustomerTabPlaceholder } from '../../components/customers/CustomerTabPlaceholder'
 import { CustomerTransactionHistoryTab } from '../../components/customers/CustomerTransactionHistoryTab'
+import { CustomerServiceRequestsTab } from '../../components/customers/service-requests/CustomerServiceRequestsTab'
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
 import { profileTabs, profileTabSlugs, type ProfileTab } from '../../data/customerProfileTabs'
@@ -14,9 +15,7 @@ import { serviceRequestRepository } from '../../repositories/serviceRequestRepos
 
 interface CustomerProfilePageProps { onNotify: (message: string) => void }
 
-const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Transaction History'>, { icon: typeof ContactRound; description: string }> = {
-  Contacts: { icon: ContactRound, description: 'Manage the people associated with this customer.' },
-  'Service Requests': { icon: ClipboardList, description: 'Review service requests submitted for this customer.' },
+const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Contacts' | 'Service Requests' | 'Transaction History'>, { icon: typeof ContactRound; description: string }> = {
   Quotations: { icon: ReceiptText, description: 'Review commercial quotations prepared for this customer.' },
   Contracts: { icon: FileSignature, description: 'Manage customer contracts and service agreements.' },
   Appointments: { icon: CalendarDays, description: 'Review scheduled and completed customer appointments.' },
@@ -64,8 +63,9 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
       <div id="customer-tab-panel" className="profile-tab-panel" role="tabpanel" aria-labelledby={`customer-tab-${activeTabIndex}`} tabIndex={0}>
         {activeTab === 'Overview' && <CustomerOverviewTab customer={customer} appointment={customerAppointments[customer.id]?.[0]} activities={customerActivities[customer.id] ?? []} notes={customerInternalNotes[customer.id] ?? []} onNotify={onNotify} />}
         {activeTab === 'Contacts' && <CustomerContactsTab customer={customer} onNotify={onNotify} />}
+        {activeTab === 'Service Requests' && <CustomerServiceRequestsTab customer={customer} onNotify={onNotify} />}
         {activeTab === 'Transaction History' && <CustomerTransactionHistoryTab transactions={transactions} onNotify={onNotify} />}
-        {activeTab !== 'Overview' && activeTab !== 'Contacts' && activeTab !== 'Transaction History' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
+        {activeTab !== 'Overview' && activeTab !== 'Contacts' && activeTab !== 'Service Requests' && activeTab !== 'Transaction History' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
       </div>
     </div>
   </div>
