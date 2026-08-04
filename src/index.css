@@ -316,8 +316,9 @@ td { border-top: 1px solid #e2e2e2; }
 .primary-contact-identity .contact-type-badge, .primary-contact-identity .contact-status-badge { padding: 4px 8px; font-size: 8px; }
 .contact-type-badge, .contact-status-badge { width: fit-content; padding: 4px 7px; display: inline-flex; border-radius: 9px; font-size: 7px; font-weight: 700; }
 .contact-type-badge { color: #315d82; background: #e7eff5; }
-.contact-active { color: #177342; background: #e4f5eb; }
-.contact-inactive { color: #66717b; background: #edf0f2; }
+.contact-status-badge { border: 1px solid #cbd4db; }
+.contact-active { border-color: #a8d9bc; color: #116437; background: #d9f1e3; }
+.contact-inactive { border-color: #c9d1d7; color: #4f5d68; background: #e5eaee; }
 .primary-contact-main dl { margin: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .primary-contact-main dl div { min-width: 0; padding: 10px 11px; border: 1px solid #e5eaed; border-radius: 7px; background: #f7f9fa; }
 .primary-contact-main dt { display: flex; align-items: center; gap: 5px; color: #6e7e89; font-size: 8px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
@@ -355,7 +356,8 @@ td { border-top: 1px solid #e2e2e2; }
 .contact-details-cell { min-width: 0; display: grid; gap: 4px; }
 .contact-details-cell span { min-width: 0; display: flex; align-items: center; gap: 6px; overflow: hidden; color: #4d6271; font-size: 9px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .contact-details-cell svg { width: 13px; height: 13px; }
-.contacts-table .contact-type-badge, .contacts-table .contact-status-badge { padding: 5px 8px; font-size: 8px; }
+.contacts-table .contact-type-badge { padding: 5px 8px; font-size: 8px; }
+.contacts-table .contact-status-badge { padding: 5px 9px; border-radius: 10px; font-size: 9px; }
 .contact-empty { min-height: 230px; padding: 30px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #72808b; text-align: center; }
 .contact-empty h3 { margin: 10px 0 0; color: #2a4052; font-size: 11px; }
 .contact-empty p { max-width: 440px; margin: 6px 0 14px; font-size: 9px; line-height: 1.5; }

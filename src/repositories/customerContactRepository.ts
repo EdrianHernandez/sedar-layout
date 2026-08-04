@@ -10,7 +10,9 @@ export const customerContactRepository = {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (!stored) return [...initialCustomerContacts]
       const parsed: unknown = JSON.parse(stored)
-      return Array.isArray(parsed) && parsed.every(validContact) ? parsed : [...initialCustomerContacts]
+      if (!Array.isArray(parsed) || !parsed.every(validContact)) return [...initialCustomerContacts]
+      const storedIds = new Set(parsed.map((contact) => contact.id))
+      return [...parsed, ...initialCustomerContacts.filter((contact) => !storedIds.has(contact.id))]
     } catch { return [...initialCustomerContacts] }
   },
   getByCustomer(customerId: string): CustomerContact[] { return this.getAll().filter((contact) => contact.customerId === customerId) },
