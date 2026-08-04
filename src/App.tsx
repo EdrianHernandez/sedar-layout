@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { DashboardHeader } from './components/dashboard/DashboardHeader'
 import { MetricCard } from './components/dashboard/MetricCard'
 import { ServiceRequestsPanel } from './components/dashboard/ServiceRequestsPanel'
@@ -10,9 +10,12 @@ import { Toast } from './components/ui/Toast'
 import { metrics } from './data/mockData'
 import { CustomerProfilePage } from './pages/customers/CustomerProfilePage'
 import { CustomersPage } from './pages/customers/CustomersPage'
+import { NewServiceRequestPage } from './pages/service-requests/NewServiceRequestPage'
+import { ServiceRequestDetailsPlaceholder } from './pages/service-requests/ServiceRequestDetailsPlaceholder'
 import type { RequestFilter } from './types'
 
 export default function App() {
+  const navigate = useNavigate()
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('sedar-marketing-sidebar-collapsed') !== 'true')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [filter, setFilter] = useState<RequestFilter>('ALL')
@@ -57,7 +60,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/marketing/dashboard" replace />} />
         <Route path="/marketing/dashboard" element={<>
-          <DashboardHeader onNewRequest={() => notify('New service request form will open here.')} onSchedule={() => notify('Appointment scheduler will open here.')} />
+          <DashboardHeader onNewRequest={() => navigate('/marketing/service-requests/new')} onSchedule={() => notify('Appointment scheduler will open here.')} />
           <section className="metrics-grid" aria-label="Dashboard metrics">{metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}</section>
           <div className="panels-grid">
             <ServiceRequestsPanel filter={filter} onFilterChange={setFilter} />
@@ -65,6 +68,8 @@ export default function App() {
           </div>
         </>} />
         <Route path="/marketing/service-requests" element={<PlaceholderPage title="Service Requests" />} />
+        <Route path="/marketing/service-requests/new" element={<NewServiceRequestPage onNotify={notify} />} />
+        <Route path="/marketing/service-requests/:requestId" element={<ServiceRequestDetailsPlaceholder />} />
         <Route path="/marketing/customers" element={<CustomersPage onNotify={notify} />} />
         <Route path="/marketing/customers/:customerId" element={<CustomerProfilePage onNotify={notify} />} />
         <Route path="/marketing/quotations" element={<PlaceholderPage title="Quotations" />} />

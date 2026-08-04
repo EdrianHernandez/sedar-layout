@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
-import { Topbar } from './Topbar'
 
 interface AppShellProps {
   children: ReactNode
@@ -21,10 +20,6 @@ export function AppShell({ children, desktopSidebarOpen, mobileSidebarOpen, setD
         onDesktopClose={() => setDesktopSidebarOpen(false)}
         onMobileClose={() => setMobileSidebarOpen(false)}
         onNavigate={onNavigate}
-      />
-      <Topbar
-        mobileSidebarOpen={mobileSidebarOpen}
-        onMobileMenuClick={() => setMobileSidebarOpen(true)}
       />
       <main className="workspace">{children}</main>
     </div>

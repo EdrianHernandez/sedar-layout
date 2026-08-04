@@ -10,6 +10,7 @@ import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
 import { profileTabs, type ProfileTab } from '../../data/customerProfileTabs'
 import { customerActivities, customerAppointments, customerInternalNotes, customerTransactions } from '../../data/customerTransactionMockData'
+import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 
 interface CustomerProfilePageProps { onNotify: (message: string) => void }
 
@@ -31,7 +32,9 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
   if (!customer) return <section className="profile-not-found"><h1>Customer Not Found</h1><p>The requested customer record could not be found.</p><Link className="button button-secondary" to="/marketing/customers"><ArrowLeft size={15} />Back to Customers</Link></section>
 
   const transactions = customerTransactions.filter((transaction) => transaction.customerId === customer.id)
-  const totalRequests = transactions.filter((transaction) => transaction.type === 'Service Request').length
+  const requestReferences = new Set(transactions.filter((transaction) => transaction.type === 'Service Request').map((transaction) => transaction.reference))
+  serviceRequestRepository.getAll().filter((request) => request.customerId === customer.id).forEach((request) => requestReferences.add(request.referenceNumber))
+  const totalRequests = requestReferences.size
   const activeQuotations = transactions.filter((transaction) => transaction.type === 'Quotation' && ['Draft', 'Under Review', 'Sent', 'Approved'].includes(transaction.status)).length
   const activeContracts = transactions.filter((transaction) => transaction.type === 'Contract' && transaction.status === 'Active').length
   const completedServices = transactions.filter((transaction) => transaction.type === 'Completed Service' || (transaction.type === 'Service Request' && transaction.status === 'Completed')).length
