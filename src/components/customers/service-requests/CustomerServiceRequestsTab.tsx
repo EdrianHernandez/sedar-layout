@@ -64,7 +64,7 @@ export function CustomerServiceRequestsTab({ customer, onNotify }: Props) {
   }
 
   return <section className="service-requests-tab" aria-labelledby="customer-service-requests-title">
-    <header className="service-requests-tab-header"><h2 id="customer-service-requests-title">Service Request</h2></header>
+    <header className="service-requests-tab-header"><h2 id="customer-service-requests-title">Service Request</h2><Link className="button button-primary" to={newRequestPath}><Plus size={15} aria-hidden="true" />New Service Request</Link></header>
     <div className="service-request-summary" aria-label="Service request summary">
       <div><ClipboardList /><span>Total Requests</span><strong>{requests.length}</strong></div>
       <div><Clock3 /><span>Open Requests</span><strong>{requests.filter((request) => !['Completed', 'Cancelled'].includes(request.status)).length}</strong></div>

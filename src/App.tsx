@@ -12,6 +12,8 @@ import { CustomerProfilePage } from './pages/customers/CustomerProfilePage'
 import { CustomersPage } from './pages/customers/CustomersPage'
 import { NewServiceRequestPage } from './pages/service-requests/NewServiceRequestPage'
 import { ServiceRequestDetailsPlaceholder } from './pages/service-requests/ServiceRequestDetailsPlaceholder'
+import { NewQuotationPlaceholder } from './pages/quotations/NewQuotationPlaceholder'
+import { QuotationDetailsPlaceholder } from './pages/quotations/QuotationDetailsPlaceholder'
 import type { RequestFilter } from './types'
 
 export default function App() {
@@ -73,6 +75,8 @@ export default function App() {
         <Route path="/marketing/customers" element={<CustomersPage onNotify={notify} />} />
         <Route path="/marketing/customers/:customerId" element={<CustomerProfilePage onNotify={notify} />} />
         <Route path="/marketing/quotations" element={<PlaceholderPage title="Quotations" />} />
+        <Route path="/marketing/quotations/new" element={<NewQuotationPlaceholder />} />
+        <Route path="/marketing/quotations/:quotationId" element={<QuotationDetailsPlaceholder />} />
         <Route path="/marketing/contracts" element={<PlaceholderPage title="Contracts" />} />
         <Route path="/marketing/appointments" element={<PlaceholderPage title="Appointments" />} />
         <Route path="/marketing/reports" element={<PlaceholderPage title="Reports" />} />

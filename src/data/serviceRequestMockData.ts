@@ -47,4 +47,9 @@ export const initialServiceRequests: ServiceRequest[] = [
     vessel: { name: 'MV Ocean Crest', type: 'Tanker' }, service: { type: 'Emergency Towing', tugboatsRequired: 3, description: 'Emergency towing request withdrawn after vessel recovery.' },
     schedule: { requestedDate: '2026-07-20', requestedTime: '23:30', portOrOperatingArea: 'Verde Island Passage', flexibility: 'Fixed Schedule' }, operations: {}, priority: 'Emergency', assignedMarketingRepresentative: 'Andrea Santos', internalTags: ['prototype'], status: 'Cancelled', cancellationReason: 'Customer withdrew request', cancelledAt: '2026-07-20T18:10:00.000Z', createdAt: '2026-07-20T14:05:00.000Z', updatedAt: '2026-07-20T18:10:00.000Z',
   },
+  {
+    id: 'REQ-PROTOTYPE-009', referenceNumber: 'SR-2026-009', customerId: 'CUS-001', contactId: 'CUS-001-PRIMARY', requestSource: 'Email',
+    vessel: { name: 'MV Luzon Voyager', type: 'Cargo Ship' }, service: { type: 'Harbor Towage', tugboatsRequired: 2, description: 'Reviewed harbor towage request available for quotation.' },
+    schedule: { requestedDate: '2026-08-18', requestedTime: '11:00', portOrOperatingArea: 'Batangas Port', berthOrTerminal: 'Berth 6', flexibility: 'Flexible by 1 Hour' }, operations: {}, priority: 'Normal', assignedMarketingRepresentative: 'Andrea Santos', internalTags: ['prototype'], status: 'Approved', createdAt: '2026-08-04T03:00:00.000Z', updatedAt: '2026-08-04T04:00:00.000Z',
+  },
 ]
