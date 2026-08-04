@@ -197,6 +197,11 @@ td { border-top: 1px solid #e2e2e2; }
 .profile-relationship-strip strong { margin-top: 3px; display: block; overflow: hidden; color: #263c4d; font-size: 9px; letter-spacing: 0; text-overflow: ellipsis; text-transform: none; }
 .profile-action-menu button { display: flex; align-items: center; gap: 8px; }
 .profile-metrics { margin-top: 14px; }
+.profile-metrics .metric-card { height: 118px; padding: 18px 18px; border-color: #234766; border-radius: 12px; background: var(--sidebar); box-shadow: 0 4px 12px rgba(6,29,55,.11); transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.profile-metrics .metric-card:hover { border-color: #416580; box-shadow: 0 7px 17px rgba(6,29,55,.16); transform: translateY(-1px); }
+.profile-metrics .metric-label { color: #b8c8d5; font-size: 9px; letter-spacing: .07em; white-space: nowrap; }
+.profile-metrics .metric-value { margin-top: 13px; color: #fff; font-size: 32px; }
+.profile-metrics .metric-icon { right: 7px; bottom: -10px; width: 67px; height: 67px; color: #b8cddd; opacity: .22; }
 .profile-tab-shell { margin-top: 14px; min-width: 0; }
 .profile-tabs { display: flex; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: #fff; scrollbar-width: thin; scrollbar-color: #9aabb9 transparent; }
 .profile-tabs button { position: relative; min-width: max-content; height: 46px; padding: 0 14px; border: 0; color: #66737e; background: transparent; font-size: 9px; font-weight: 700; white-space: nowrap; cursor: pointer; }
