@@ -10,6 +10,7 @@ import { CustomerServiceRequestsTab } from '../../components/customers/service-r
 import { CustomerQuotationsTab } from '../../components/customers/quotations/CustomerQuotationsTab'
 import { CustomerContractsTab } from '../../components/customers/contracts/CustomerContractsTab'
 import { CustomerAppointmentsTab } from '../../components/customers/appointments/CustomerAppointmentsTab'
+import { AppointmentCalendarInteractions } from '../../components/customers/appointments/AppointmentCalendarInteractions'
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
 import { profileTabs, profileTabSlugs, type ProfileTab } from '../../data/customerProfileTabs'
@@ -70,7 +71,7 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
         {activeTab === 'Quotations' && <CustomerQuotationsTab customer={customer} onNotify={onNotify} />}
         {activeTab === 'Contracts' && <CustomerContractsTab customer={customer} onNotify={onNotify} />}
         {activeTab === 'Transaction History' && <><header className="transaction-history-header"><h2>Transaction History</h2></header><CustomerTransactionHistoryTab customer={customer} onNotify={onNotify} /></>}
-        {activeTab === 'Appointments' && <CustomerAppointmentsTab customer={customer} onNotify={onNotify} />}
+        {activeTab === 'Appointments' && <><CustomerAppointmentsTab customer={customer} onNotify={onNotify} /><AppointmentCalendarInteractions customerId={customer.id} /></>}
         {activeTab !== 'Overview' && activeTab !== 'Contacts' && activeTab !== 'Service Requests' && activeTab !== 'Quotations' && activeTab !== 'Contracts' && activeTab !== 'Transaction History' && activeTab !== 'Appointments' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
       </div>
     </div>

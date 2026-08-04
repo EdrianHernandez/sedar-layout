@@ -598,6 +598,44 @@ td { border-top: 1px solid #e2e2e2; }
 .next-appointment-actions .button:last-child:hover { border-color: #244f70; background: #244f70; }
 .next-appointment-actions .button:last-child:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(49,93,130,.25); }
 .next-appointment-actions .button:last-child::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v5.5M3 6a2 2 0 0 1 2-2m-2 2v14a2 2 0 0 0 2 2h7'/%3E%3Ccircle cx='18' cy='18' r='4'/%3E%3Cpath d='M18 16.5V18l1 1'/%3E%3C/g%3E%3C/svg%3E"); }
+.appointment-calendar-grid > div[role="button"] { cursor: pointer; transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.appointment-calendar-grid > div[role="button"]:hover { border-color: #7f9bb0; background: #f0f5f8; transform: translateY(-1px); }
+.appointment-calendar-grid > div[role="button"]:focus-visible { outline: 0; border-color: #315d82; box-shadow: 0 0 0 3px rgba(49,93,130,.2); }
+.appointment-day-popover { position: fixed; z-index: 450; width: min(260px,calc(100vw - 20px)); max-height: 180px; padding: 12px; overflow-y: auto; border: 1px solid #b9c8d2; border-radius: 8px; background: #fff; box-shadow: 0 12px 30px rgba(6,29,55,.22); }
+.appointment-day-popover > strong { display: block; padding-bottom: 8px; color: #173a55; font-size: 11px; border-bottom: 1px solid #e1e7eb; }
+.appointment-day-popover > div { padding: 9px 0; }.appointment-day-popover > div + div { border-top: 1px solid #e7ecef; }.appointment-day-popover b, .appointment-day-popover span { display: block; }.appointment-day-popover b { color: #294356; font-size: 9px; }.appointment-day-popover span { margin-top: 4px; color: #6a7b87; font-size: 8px; }
+.appointment-day-schedule-button { width: 100%; min-height: 38px; margin-top: 4px; padding: 0 10px; border: 1px solid #315d82; border-radius: 6px; color: #fff; background: var(--sidebar); font-size: 9px; font-weight: 700; cursor: pointer; }
+.appointment-day-schedule-button:hover { background: #244f70; }
+.appointment-day-schedule-button:focus-visible { outline: 3px solid rgba(49,93,130,.22); outline-offset: 2px; }
+.appointment-day-drawer-backdrop { position: fixed; z-index: 420; inset: 0; display: flex; justify-content: flex-end; background: rgba(3,15,29,.55); }
+.appointment-day-drawer { width: min(510px,100%); height: 100%; display: flex; flex-direction: column; outline: 0; background: #f5f7f9; box-shadow: -12px 0 36px rgba(0,0,0,.22); }
+.appointment-day-drawer > header { min-height: 104px; padding: 18px; display: flex; align-items: flex-start; justify-content: space-between; background: var(--sidebar); }
+.appointment-day-drawer > header span { color: #b9cbd8; font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.appointment-day-drawer > header h2 { margin: 7px 0 0; color: #fff; font-size: 17px; line-height: 1.3; }
+.appointment-day-drawer > header p { margin: 6px 0 0; color: #c7d5df; font-size: 9px; }
+.appointment-day-drawer > header button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: #e1eaf0; background: rgba(255,255,255,.07); cursor: pointer; }
+.appointment-day-drawer > header button:hover { background: rgba(255,255,255,.14); }
+.appointment-day-drawer-body { min-height: 0; padding: 15px; flex: 1; overflow-y: auto; }
+.appointment-day-list { display: grid; gap: 11px; }
+.appointment-day-list article { padding: 14px; border: 1px solid #d2dce2; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px rgba(6,29,55,.04); }
+.appointment-day-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.appointment-day-card-heading h3 { margin: 0; color: #17384f; font-size: 12px; }
+.appointment-day-card-heading p { margin: 5px 0 0; color: #6a7b87; font-size: 9px; }
+.appointment-day-list dl { margin: 13px 0 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+.appointment-day-list dl div { min-width: 0; padding: 8px; border-radius: 6px; background: #f4f7f9; }
+.appointment-day-list dt { display: flex; align-items: center; gap: 5px; color: #71818c; font-size: 7px; font-weight: 700; text-transform: uppercase; }
+.appointment-day-list dd { margin: 5px 0 0; overflow-wrap: anywhere; color: #294253; font-size: 9px; font-weight: 700; }
+.appointment-day-expanded { margin-top: 11px; padding: 10px; border-left: 3px solid #315d82; border-radius: 0 6px 6px 0; background: #edf4f8; }
+.appointment-day-expanded p { margin: 0; color: #4a6271; font-size: 9px; line-height: 1.45; }
+.appointment-day-expanded p + p { margin-top: 7px; }
+.appointment-day-expanded strong { margin-bottom: 2px; display: block; color: #1f425b; font-size: 8px; text-transform: uppercase; }
+.appointment-day-details-button { min-height: 36px; margin-top: 11px; padding: 0 10px; border: 1px solid #c3d2dc; border-radius: 5px; color: #245a82; background: #fff; font-size: 9px; font-weight: 700; cursor: pointer; }
+.appointment-day-details-button:hover { background: #edf4f8; }
+.appointment-day-empty { min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #71808b; text-align: center; }
+.appointment-day-empty h3 { margin: 11px 0 0; color: #294154; font-size: 12px; }
+.appointment-day-empty p { max-width: 310px; margin: 7px 0 0; font-size: 9px; line-height: 1.5; }
+.appointment-day-drawer > footer { padding: 13px 15px; border-top: 1px solid #d4dde3; background: #fff; }
+.appointment-day-drawer > footer .button { width: 100%; min-height: 42px; }
 .contact-type-options, .contact-day-options, .authorization-options { display: flex; flex-wrap: wrap; gap: 7px; }
 .contact-type-options label, .contact-day-options label, .authorization-options label, .contact-primary-checkbox { min-height: 34px; padding: 7px 9px; display: flex; align-items: center; gap: 6px; border: 1px solid #d4dbe0; border-radius: 5px; color: #435461; background: #fafbfc; font-size: 8px; font-weight: 600; }
 .authorization-options { flex-direction: column; }
