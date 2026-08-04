@@ -1,4 +1,4 @@
-import { BadgeCheck, CircleCheckBig, ClipboardList, Clock3, Plus, Search } from 'lucide-react'
+import { ClipboardList, Plus, Search } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { SERVICE_PRIORITIES, SERVICE_REQUEST_STATUSES, SERVICE_TYPES } from '../../../data/serviceRequestOptions'
@@ -66,10 +66,10 @@ export function CustomerServiceRequestsTab({ customer, onNotify }: Props) {
   return <section className="service-requests-tab" aria-labelledby="customer-service-requests-title">
     <header className="service-requests-tab-header"><h2 id="customer-service-requests-title">Service Request</h2><Link className="button button-primary" to={newRequestPath}><Plus size={15} aria-hidden="true" />New Service Request</Link></header>
     <div className="service-request-summary" aria-label="Service request summary">
-      <div><ClipboardList /><span>Total Requests</span><strong>{requests.length}</strong></div>
-      <div><Clock3 /><span>Open Requests</span><strong>{requests.filter((request) => !['Completed', 'Cancelled'].includes(request.status)).length}</strong></div>
-      <div><BadgeCheck /><span>Awaiting Approval</span><strong>{requests.filter((request) => ['Awaiting Operations', 'Awaiting Customer Approval'].includes(request.status)).length}</strong></div>
-      <div><CircleCheckBig /><span>Completed Services</span><strong>{requests.filter((request) => request.status === 'Completed').length}</strong></div>
+      <div><span>Total Requests</span><strong>{requests.length}</strong></div>
+      <div><span>Open Requests</span><strong>{requests.filter((request) => !['Completed', 'Cancelled'].includes(request.status)).length}</strong></div>
+      <div><span>Awaiting Approval</span><strong>{requests.filter((request) => ['Awaiting Operations', 'Awaiting Customer Approval'].includes(request.status)).length}</strong></div>
+      <div><span>Completed Services</span><strong>{requests.filter((request) => request.status === 'Completed').length}</strong></div>
     </div>
     <div className="service-request-directory">
       <div className="service-request-filters">
