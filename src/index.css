@@ -405,41 +405,44 @@ td { border-top: 1px solid #e2e2e2; }
 .service-request-filters .clear-filters { min-height: 40px; }
 .service-request-table-scroll { max-width: 100%; overflow-x: auto; }
 .service-request-table { width: 100%; min-width: 960px; table-layout: fixed; }
-.service-request-table th { height: 40px; padding: 0 10px; color: #344c60; font-size: 8px; letter-spacing: .04em; white-space: nowrap; vertical-align: middle; }
-.service-request-table td { height: 54px; padding: 8px 10px; color: #304453; font-size: 9px; white-space: nowrap; vertical-align: middle; }
+.service-request-table th { height: 40px; padding: 0 10px; color: #344c60; font-size: 9px; letter-spacing: .04em; white-space: nowrap; vertical-align: middle; }
+.service-request-table td { height: 58px; padding: 8px 10px; color: #304453; font-size: 10px; white-space: nowrap; vertical-align: middle; }
 .service-request-table th:nth-child(1) { width: 10%; }
-.service-request-table th:nth-child(2) { width: 13%; }
-.service-request-table th:nth-child(3) { width: 12%; }
+.service-request-table th:nth-child(2) { width: 12%; }
+.service-request-table th:nth-child(3) { width: 11%; }
 .service-request-table th:nth-child(4) { width: 11%; }
-.service-request-table th:nth-child(5) { width: 10%; }
+.service-request-table th:nth-child(5) { width: 9%; }
 .service-request-table th:nth-child(6) { width: 6%; }
 .service-request-table th:nth-child(7) { width: 9%; }
-.service-request-table th:nth-child(8) { width: 12%; }
-.service-request-table th:nth-child(9) { width: 13%; }
+.service-request-table th:nth-child(8) { width: 16%; }
+.service-request-table th:nth-child(9) { width: 12%; }
 .service-request-table th:nth-child(10) { width: 4%; }
+.service-request-table th:nth-child(9), .service-request-table td:nth-child(9) { padding-left: 14px; }
 .service-request-table td:not(:last-child) { overflow: hidden; text-overflow: ellipsis; }
 .service-request-table td:last-child { padding-inline: 4px; text-align: center; }
 .service-request-table td strong, .service-request-table td > span { display: block; }
-.service-request-table td > span { margin-top: 4px; color: #71808b; font-size: 8px; }
+.service-request-table td > span { margin-top: 4px; color: #71808b; font-size: 9px; }
 .service-request-table tbody tr:hover { background: #fafcfd; }
 .service-request-table .centered { text-align: center; }
 .service-request-reference { color: #245d86; font-weight: 700; text-decoration: none; }
 .service-request-reference:hover { text-decoration: underline; }
-.service-request-badge { width: fit-content; padding: 5px 8px; display: inline-flex; border-radius: 10px; color: #66717b; background: #edf0f2; font-size: 8px; font-weight: 700; }
-.service-status-under-review { color: #245d99; background: #e7f0fa; }
-.service-status-awaiting-operations { color: #89600a; background: #fff2d2; }
-.service-status-quotation-prepared { color: #68438f; background: #f0e8f8; }
-.service-status-awaiting-customer-approval { color: #a75014; background: #ffeadc; }
-.service-status-approved, .service-status-completed { color: #177342; background: #e4f5eb; }
-.service-status-scheduled { color: #fff; background: #173a57; }
-.service-status-cancelled { color: #ad2f2f; background: #fbe8e8; }
-.service-priority-normal { color: #536d82; background: #e8eff4; }
-.service-priority-high { color: #89600a; background: #fff2d2; }
-.service-priority-urgent { color: #a75014; background: #ffeadc; }
-.service-priority-emergency { color: #ad2f2f; background: #fbe8e8; border: 1px solid #edcaca; }
-.service-request-pagination { min-height: 49px; padding: 8px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #e0e5e8; color: #687985; font-size: 8px; }
+.service-request-badge { width: fit-content; padding: 5px 9px; display: inline-flex; border: 1px solid #cbd4db; border-radius: 10px; color: #52616d; background: #e9eef2; font-size: 9px; font-weight: 700; }
+.service-status-draft { border-color: #c9d1d7; color: #4f5d68; background: #e5eaee; }
+.service-status-under-review { border-color: #a9c9ea; color: #174f88; background: #dceafb; }
+.service-status-awaiting-operations { border-color: #efd181; color: #775000; background: #fff0bd; }
+.service-status-quotation-prepared { border-color: #d1b5e8; color: #603287; background: #edddf8; }
+.service-status-awaiting-customer-approval { border-color: #f1bd94; color: #94410d; background: #ffe1cb; }
+.service-status-approved { border-color: #a8d9bc; color: #116437; background: #d9f1e3; }
+.service-status-scheduled { border-color: #9ebbd2; color: #173f61; background: #dceaf4; }
+.service-status-completed { border-color: #9fd8d0; color: #086157; background: #d4f0ec; }
+.service-status-cancelled { border-color: #e5a9a9; color: #992727; background: #f9dddd; }
+.service-priority-normal { border-color: #b8cad8; color: #3f6078; background: #e1ebf2; }
+.service-priority-high { border-color: #edcf78; color: #765000; background: #ffefba; }
+.service-priority-urgent { border-color: #efb693; color: #923c0b; background: #ffdfcc; }
+.service-priority-emergency { border-color: #df9999; color: #972323; background: #f8dada; }
+.service-request-pagination { min-height: 49px; padding: 8px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #e0e5e8; color: #687985; font-size: 9px; }
 .service-request-pagination > div, .service-request-pagination label { display: flex; align-items: center; gap: 7px; }
-.service-request-pagination select, .service-request-pagination button { min-height: 32px; padding: 0 9px; border: 1px solid #cbd3d8; border-radius: 5px; background: #fff; font-size: 8px; }
+.service-request-pagination select, .service-request-pagination button { min-height: 32px; padding: 0 9px; border: 1px solid #cbd3d8; border-radius: 5px; background: #fff; font-size: 9px; }
 .service-request-pagination button:disabled { color: #a7afb5; background: #f4f5f6; }
 .service-request-empty { min-height: 250px; padding: 30px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #71808b; text-align: center; }
 .service-request-empty h3 { margin: 11px 0 0; color: #294154; font-size: 11px; }

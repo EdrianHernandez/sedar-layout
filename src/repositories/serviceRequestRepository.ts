@@ -16,7 +16,9 @@ export const serviceRequestRepository = {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (!stored) return [...initialServiceRequests]
       const parsed: unknown = JSON.parse(stored)
-      return Array.isArray(parsed) && parsed.every(isServiceRequest) ? parsed : [...initialServiceRequests]
+      if (!Array.isArray(parsed) || !parsed.every(isServiceRequest)) return [...initialServiceRequests]
+      const storedIds = new Set(parsed.map((request) => request.id))
+      return [...parsed, ...initialServiceRequests.filter((request) => !storedIds.has(request.id))]
     } catch {
       return [...initialServiceRequests]
     }
