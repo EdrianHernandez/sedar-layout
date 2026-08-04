@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DiscardChangesDialog } from '../../components/service-requests/DiscardChangesDialog'
 import { CustomerStatusBadge } from '../../components/customers/CustomerStatusBadge'
 import { initialCustomers } from '../../data/customerMockData'
+import { customerContactRepository } from '../../repositories/customerContactRepository'
 import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 import type { ServicePriority, ServiceRequest, ServiceRequestStatus } from '../../types/serviceRequest'
 import { generateServiceRequestReference } from '../../utils/generateServiceRequestReference'
@@ -20,9 +21,11 @@ const priorities: ServicePriority[] = ['Normal', 'High', 'Urgent', 'Emergency']
 const representatives = [...new Set(initialCustomers.map((customer) => customer.assignedRepresentative))].sort()
 const today = new Date().toISOString().slice(0, 10)
 
-const emptyForm = (customerId = ''): FormState => {
+const emptyForm = (customerId = '', requestedContactId = ''): FormState => {
   const customer = initialCustomers.find((item) => item.id === customerId)
-  return { customerId: customer?.id ?? '', contactId: customer ? `${customer.id}-PRIMARY` : '', requestSource: 'Customer Inquiry', vesselName: '', imoNumber: '', vesselType: '', flag: '', grossTonnage: '', lengthOverall: '', beam: '', draft: '', cargoType: '', vesselAgent: '', serviceType: '', tugboatsRequired: '1', preferredTugClass: '', estimatedDuration: '', contractReference: '', purchaseOrderReference: '', serviceDescription: '', requestedDate: '', requestedTime: '', portOrOperatingArea: '', berthOrTerminal: '', origin: '', destination: '', completionDate: '', completionTime: '', flexibility: 'Fixed Schedule', natureOfAssistance: '', specialTugRequirements: '', safetyRequirements: '', knownHazards: '', weatherTide: '', communicationChannel: '', additionalInstructions: '', priority: 'Normal', assignedRepresentative: customer?.assignedRepresentative ?? '', operationsReviewer: '', internalTags: '', internalNotes: '', followUpDate: '' }
+  const activeContacts = customer ? customerContactRepository.getByCustomer(customer.id).filter((contact) => contact.status === 'Active') : []
+  const selectedContact = activeContacts.find((contact) => contact.id === requestedContactId) ?? activeContacts.find((contact) => contact.isPrimary) ?? activeContacts[0]
+  return { customerId: customer?.id ?? '', contactId: selectedContact?.id ?? '', requestSource: 'Customer Inquiry', vesselName: '', imoNumber: '', vesselType: '', flag: '', grossTonnage: '', lengthOverall: '', beam: '', draft: '', cargoType: '', vesselAgent: '', serviceType: '', tugboatsRequired: '1', preferredTugClass: '', estimatedDuration: '', contractReference: '', purchaseOrderReference: '', serviceDescription: '', requestedDate: '', requestedTime: '', portOrOperatingArea: '', berthOrTerminal: '', origin: '', destination: '', completionDate: '', completionTime: '', flexibility: 'Fixed Schedule', natureOfAssistance: '', specialTugRequirements: '', safetyRequirements: '', knownHazards: '', weatherTide: '', communicationChannel: '', additionalInstructions: '', priority: 'Normal', assignedRepresentative: customer?.assignedRepresentative ?? '', operationsReviewer: '', internalTags: '', internalNotes: '', followUpDate: '' }
 }
 
 interface FieldProps { name: string; label: string; value: string; error?: string; required?: boolean; type?: string; min?: string; step?: string; placeholder?: string; wide?: boolean; options?: string[]; rows?: number; onChange: (name: string, value: string) => void }
@@ -39,8 +42,9 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const originCustomerId = searchParams.get('customerId') ?? ''
+  const requestedContactId = searchParams.get('contactId') ?? ''
   const originCustomer = initialCustomers.find((customer) => customer.id === originCustomerId)
-  const [form, setForm] = useState<FormState>(() => emptyForm(originCustomerId))
+  const [form, setForm] = useState<FormState>(() => emptyForm(originCustomerId, requestedContactId))
   const [customerSearch, setCustomerSearch] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [formMessage, setFormMessage] = useState('')
@@ -48,7 +52,8 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const selectedCustomer = initialCustomers.find((customer) => customer.id === form.customerId)
-  const contact = selectedCustomer?.primaryContact
+  const activeContacts = selectedCustomer ? customerContactRepository.getByCustomer(selectedCustomer.id).filter((item) => item.status === 'Active') : []
+  const contact = activeContacts.find((item) => item.id === form.contactId)
   const cancelTarget = originCustomer ? `/marketing/customers/${originCustomer.id}` : '/marketing/service-requests'
 
   const update = (name: string, value: string) => {
@@ -61,7 +66,9 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
     const normalized = value.toLowerCase()
     const customer = initialCustomers.find((item) => item.id.toLowerCase() === normalized || item.companyName.toLowerCase() === normalized || `${item.companyName} (${item.id})`.toLowerCase() === normalized)
     if (!customer) return
-    setForm((current) => ({ ...current, customerId: customer.id, contactId: `${customer.id}-PRIMARY`, assignedRepresentative: customer.assignedRepresentative }))
+    const contacts = customerContactRepository.getByCustomer(customer.id).filter((item) => item.status === 'Active')
+    const selected = contacts.find((item) => item.isPrimary) ?? contacts[0]
+    setForm((current) => ({ ...current, customerId: customer.id, contactId: selected?.id ?? '', assignedRepresentative: customer.assignedRepresentative }))
     setErrors((current) => { const next = { ...current }; delete next.customerId; delete next.contactId; delete next.assignedRepresentative; return next })
     setDirty(true)
   }
@@ -133,7 +140,7 @@ export function NewServiceRequestPage({ onNotify }: NewServiceRequestPageProps) 
     <form onSubmit={(event: FormEvent) => { event.preventDefault(); createRequest('Under Review') }} noValidate>
       <RequestSection icon={Building2} title="Customer Information" description="Select the requesting customer and primary contact."><div className="request-form-grid">
         <div className="request-field request-field-wide"><span>Customer <em>*</em></span>{selectedCustomer ? <div className="selected-customer"><span>{selectedCustomer.companyInitials}</span><div><strong>{selectedCustomer.companyName}</strong><p>{selectedCustomer.id} · {selectedCustomer.customerType}</p></div><CustomerStatusBadge status={selectedCustomer.status} /><button type="button" onClick={changeCustomer}>Change Customer</button></div> : <><input id="sr-customerId" list="customer-options" value={customerSearch} placeholder="Search by company name or customer ID" aria-invalid={Boolean(errors.customerId)} aria-describedby={errors.customerId ? 'sr-customerId-error' : undefined} onChange={(event) => chooseCustomer(event.target.value)} /><datalist id="customer-options">{initialCustomers.map((customer) => <option key={customer.id} value={`${customer.companyName} (${customer.id})`} />)}</datalist>{errors.customerId && <small id="sr-customerId-error">{errors.customerId}</small>}</>}</div>
-        <div id="sr-contactId" className="request-field request-field-wide" tabIndex={-1}><span>Contact Person <em>*</em></span>{contact ? <><select className="request-contact-select" value={form.contactId} aria-invalid={Boolean(errors.contactId)} aria-describedby={errors.contactId ? 'sr-contactId-error' : undefined} onChange={(event) => update('contactId', event.target.value)}><option value={`${selectedCustomer?.id}-PRIMARY`}>{contact.name} — {contact.position}</option></select><div className="selected-contact"><span>{contact.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('')}</span><div><strong>{contact.name}</strong><p>{contact.position} · {contact.email} · {contact.phone}</p></div></div></> : <div className="missing-contact"><p>No contact person is available for this customer.<br />Add a customer contact before submitting the request.</p><button type="button" onClick={() => onNotify('Customer contact creation will be implemented next.')}>Add Contact Later</button></div>}{errors.contactId && <small id="sr-contactId-error">{errors.contactId}</small>}</div>
+        <div id="sr-contactId" className="request-field request-field-wide" tabIndex={-1}><span>Contact Person <em>*</em></span>{contact ? <><select className="request-contact-select" value={form.contactId} aria-invalid={Boolean(errors.contactId)} aria-describedby={errors.contactId ? 'sr-contactId-error' : undefined} onChange={(event) => update('contactId', event.target.value)}>{activeContacts.map((item) => <option key={item.id} value={item.id}>{item.firstName} {item.lastName} — {item.position}</option>)}</select><div className="selected-contact"><span>{contact.firstName[0]}{contact.lastName[0]}</span><div><strong>{contact.firstName} {contact.lastName}</strong><p>{contact.position} · {contact.email} · {contact.primaryPhone}</p></div></div></> : <div className="missing-contact"><p>No contact person is available for this customer.<br />Add a customer contact before submitting the request.</p><button type="button" onClick={() => onNotify('Customer contact creation will be implemented next.')}>Add Contact Later</button></div>}{errors.contactId && <small id="sr-contactId-error">{errors.contactId}</small>}</div>
         <RequestField name="requestSource" label="Request Source" value={form.requestSource} options={requestSources} onChange={update} />
       </div></RequestSection>
 

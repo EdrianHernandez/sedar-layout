@@ -1,6 +1,6 @@
 import { ArrowLeft, CalendarDays, ChevronRight, ClipboardList, ContactRound, FileSignature, Files, ListChecks, ReceiptText, CircleCheckBig } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { CustomerContactsTab } from '../../components/customers/contacts/CustomerContactsTab'
 import { CustomerOverviewTab } from '../../components/customers/CustomerOverviewTab'
 import { CustomerProfileHeader } from '../../components/customers/CustomerProfileHeader'
 import { CustomerProfileTabs } from '../../components/customers/CustomerProfileTabs'
@@ -8,7 +8,7 @@ import { CustomerTabPlaceholder } from '../../components/customers/CustomerTabPl
 import { CustomerTransactionHistoryTab } from '../../components/customers/CustomerTransactionHistoryTab'
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
-import { profileTabs, type ProfileTab } from '../../data/customerProfileTabs'
+import { profileTabs, profileTabSlugs, type ProfileTab } from '../../data/customerProfileTabs'
 import { customerActivities, customerAppointments, customerInternalNotes, customerTransactions } from '../../data/customerTransactionMockData'
 import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 
@@ -26,7 +26,15 @@ const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Transaction History
 
 export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
   const { customerId } = useParams()
-  const [activeTab, setActiveTab] = useState<ProfileTab>('Overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const activeTab = profileTabs.find((tab) => profileTabSlugs[tab] === requestedTab) ?? 'Overview'
+  const setActiveTab = (tab: ProfileTab) => {
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'Overview') next.delete('tab')
+    else next.set('tab', profileTabSlugs[tab])
+    setSearchParams(next)
+  }
   const customer = initialCustomers.find((record) => record.id === customerId)
 
   if (!customer) return <section className="profile-not-found"><h1>Customer Not Found</h1><p>The requested customer record could not be found.</p><Link className="button button-secondary" to="/marketing/customers"><ArrowLeft size={15} />Back to Customers</Link></section>
@@ -55,8 +63,9 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
       <CustomerProfileTabs activeTab={activeTab} onChange={setActiveTab} />
       <div id="customer-tab-panel" className="profile-tab-panel" role="tabpanel" aria-labelledby={`customer-tab-${activeTabIndex}`} tabIndex={0}>
         {activeTab === 'Overview' && <CustomerOverviewTab customer={customer} appointment={customerAppointments[customer.id]?.[0]} activities={customerActivities[customer.id] ?? []} notes={customerInternalNotes[customer.id] ?? []} onNotify={onNotify} />}
+        {activeTab === 'Contacts' && <CustomerContactsTab customer={customer} onNotify={onNotify} />}
         {activeTab === 'Transaction History' && <CustomerTransactionHistoryTab transactions={transactions} onNotify={onNotify} />}
-        {activeTab !== 'Overview' && activeTab !== 'Transaction History' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
+        {activeTab !== 'Overview' && activeTab !== 'Contacts' && activeTab !== 'Transaction History' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
       </div>
     </div>
   </div>

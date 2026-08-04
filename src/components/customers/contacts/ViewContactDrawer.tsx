@@ -1,0 +1,20 @@
+import { CalendarDays, Pencil, Plus, X } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import type { CustomerContact } from '../../../types/customerContact'
+import { ContactStatusBadge, ContactTypeBadge } from './ContactBadges'
+
+interface Props { contact: CustomerContact; relatedRequests: number; onClose: () => void; onEdit: () => void; onCreateRequest: () => void; onSchedule: () => void }
+const date = (value?: string) => value ? new Intl.DateTimeFormat('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(value.includes('T') ? value : `${value}T00:00:00`)) : 'Not provided'
+export function ViewContactDrawer({ contact, relatedRequests, onClose, onEdit, onCreateRequest, onSchedule }: Props) {
+  const drawerRef = useRef<HTMLElement>(null)
+  useEffect(() => { const previous = document.activeElement as HTMLElement | null; const overflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; drawerRef.current?.focus(); const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }; document.addEventListener('keydown', escape); return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', escape); previous?.focus() } }, [onClose])
+  const fullName = [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ')
+  const initials = `${contact.firstName[0]}${contact.lastName[0]}`
+  const row = (label: string, value: string) => <div><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>
+  return <div className="contact-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><aside ref={drawerRef} className="contact-drawer" role="dialog" aria-modal="true" aria-labelledby="contact-drawer-title" tabIndex={-1}><header><h2 id="contact-drawer-title">Contact Details</h2><button type="button" aria-label="Close contact details" onClick={onClose}><X size={18} /></button></header><div className="contact-drawer-body"><section className="drawer-identity"><span>{initials}</span><div><h3>{fullName}</h3><p>{contact.position} · {contact.department || 'Department not provided'}</p><div>{contact.contactTypes.map((type) => <ContactTypeBadge key={type} type={type} />)}<ContactStatusBadge status={contact.status} /></div></div></section>
+    <section><h3>Contact Information</h3><dl>{row('Email', contact.email)}{row('Primary Phone', contact.primaryPhone)}{row('Secondary Phone', contact.secondaryPhone ?? '')}{row('Preferred Method', contact.preferredContactMethod)}{row('Available Days', contact.availableDays?.join(', ') ?? '')}{row('Preferred Time', contact.preferredContactStartTime && contact.preferredContactEndTime ? `${contact.preferredContactStartTime}–${contact.preferredContactEndTime}` : '')}{row('Time Zone', contact.timeZone)}</dl></section>
+    <section><h3>Authorizations</h3><dl>{row('Approve Quotations', contact.authorizations.canApproveQuotations ? 'Yes' : 'No')}{row('Sign Contracts', contact.authorizations.canSignContracts ? 'Yes' : 'No')}{row('Coordinate Operations', contact.authorizations.canCoordinateOperations ? 'Yes' : 'No')}</dl></section>
+    <section><h3>Relationship Information</h3><dl>{row('Date Added', date(contact.createdAt))}{row('Last Contacted', date(contact.lastContactedAt))}{row('Added By', contact.addedBy)}{row('Internal Notes', contact.internalNotes ?? '')}</dl></section>
+    <section><h3>Related Activity</h3><dl>{row('Service Requests', String(relatedRequests))}{row('Appointments', '0')}{row('Most Recent Interaction', date(contact.lastContactedAt))}</dl></section>
+  </div><footer><button className="button button-secondary" type="button" onClick={onEdit}><Pencil size={14} />Edit Contact</button><button className="button button-secondary" type="button" onClick={onCreateRequest}><Plus size={14} />Create Service Request</button><button className="button button-secondary" type="button" onClick={onSchedule}><CalendarDays size={14} />Schedule Appointment</button></footer></aside></div>
+}

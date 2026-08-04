@@ -1,0 +1,13 @@
+import { MoreHorizontal } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import type { CustomerContact } from '../../../types/customerContact'
+
+interface Props { contact: CustomerContact; open: boolean; onOpenChange: (open: boolean) => void; onView: () => void; onEdit: () => void; onPrimary: () => void; onRequest: () => void; onSchedule: () => void; onStatus: () => void }
+export function ContactActionsMenu({ contact, open, onOpenChange, onView, onEdit, onPrimary, onRequest, onSchedule, onStatus }: Props) {
+  const buttonRef = useRef<HTMLButtonElement>(null); const menuRef = useRef<HTMLDivElement>(null); const [position, setPosition] = useState({ top: 0, right: 8 })
+  useEffect(() => { if (!open) return; const outside = (event: PointerEvent) => { const target = event.target as Node; if (!buttonRef.current?.contains(target) && !menuRef.current?.contains(target)) onOpenChange(false) }; const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { onOpenChange(false); buttonRef.current?.focus() } }; document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape); return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) } }, [open, onOpenChange])
+  const toggle = () => { if (!open && buttonRef.current) { const rect = buttonRef.current.getBoundingClientRect(); const height = 230; setPosition({ top: rect.bottom + height > innerHeight ? Math.max(8, rect.top - height) : rect.bottom + 4, right: Math.max(8, innerWidth - rect.right) }) } onOpenChange(!open) }
+  const action = (label: string, callback: () => void, disabled = false) => <button type="button" role="menuitem" disabled={disabled} onClick={() => { onOpenChange(false); callback() }}>{label}</button>
+  return <><button ref={buttonRef} className="customer-menu-trigger" type="button" aria-label={`Actions for ${contact.firstName} ${contact.lastName}`} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><MoreHorizontal size={17} /></button>{open && createPortal(<div ref={menuRef} className="customer-action-menu contact-action-menu" role="menu" style={position}>{action('View Contact', onView)}{action('Edit Contact', onEdit)}{action('Set as Primary', onPrimary, contact.isPrimary || contact.status === 'Inactive')}{action('Create Service Request', onRequest, contact.status === 'Inactive')}{action('Schedule Appointment', onSchedule, contact.status === 'Inactive')}{action(contact.status === 'Active' ? 'Mark as Inactive' : 'Mark as Active', onStatus)}</div>, document.body)}</>
+}
