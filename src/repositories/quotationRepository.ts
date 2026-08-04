@@ -1,5 +1,7 @@
 import { initialQuotations } from '../data/quotationMockData'
 import type { Quotation, QuotationInput, QuotationResponse } from '../types/quotation'
+import { customerActivityRepository } from './customerActivityRepository'
+import { PROTOTYPE_ACTIVITY_ACTOR } from '../types/customerActivity'
 
 const STORAGE_KEY = 'sedar-marketing-quotations'
 
@@ -50,6 +52,7 @@ export const quotationRepository = {
     const id = uuid()
     const quotation: Quotation = { ...input, id, revisionNumber: 0, originalQuotationId: id, status: input.status ?? 'Draft', createdAt: now, updatedAt: now }
     persist([quotation, ...this.getAll()])
+    customerActivityRepository.appendOnce({ customerId: quotation.customerId, module: 'Quotations', action: quotation.revisionNumber > 0 ? 'Updated' : 'Created', description: quotation.revisionNumber > 0 ? 'Quotation revision created.' : 'Quotation created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Quotation', id: quotation.id, referenceNumber: quotation.quotationNumber }, visibility: 'Internal', metadata: { revisionNumber: quotation.revisionNumber }, sourceEventKey: `quotation:${quotation.id}:created`, systemGenerated: true, eventSource: 'quotationRepository' })
     return quotation
   },
 
@@ -61,6 +64,11 @@ export const quotationRepository = {
     const updated: Quotation = { ...current, ...changes, id: current.id, originalQuotationId: current.originalQuotationId, createdAt: current.createdAt, updatedAt: new Date().toISOString() }
     quotations[index] = updated
     persist(quotations)
+    const base = { customerId: updated.customerId, module: 'Quotations' as const, actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Quotation', id: updated.id, referenceNumber: updated.quotationNumber }, visibility: 'Internal' as const, systemGenerated: true, eventSource: 'quotationRepository' }
+    if (current.status !== updated.status) {
+      const action = updated.status === 'For Internal Approval' ? 'Submitted' : updated.status === 'Customer Approved' ? 'Approved' : updated.status === 'Rejected' ? 'Rejected' : 'Status Changed'
+      customerActivityRepository.appendOnce({ ...base, action, description: `Quotation status changed to ${updated.status}.`, changes: [{ field: 'status', previousValue: current.status, newValue: updated.status }], sourceEventKey: `quotation:${id}:status:${updated.status}:${updated.updatedAt}` })
+    } else if (changes.response && current.response !== updated.response) customerActivityRepository.appendOnce({ ...base, action: 'Updated', description: 'Customer response to quotation recorded.', sourceEventKey: `quotation:${id}:response:${updated.respondedAt ?? updated.updatedAt}` })
     return updated
   },
 
@@ -118,6 +126,7 @@ export const quotationRepository = {
     const sourceIndex = quotations.findIndex((quotation) => quotation.id === source.id)
     quotations[sourceIndex] = { ...source, status: 'Superseded', supersededByQuotationId: revisionId, updatedAt: now }
     persist([revision, ...quotations])
+    customerActivityRepository.appendOnce({ customerId: revision.customerId, module: 'Quotations', action: 'Updated', description: 'Quotation revision created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Quotation', id: revision.id, referenceNumber: revision.quotationNumber }, visibility: 'Internal', metadata: { revisionNumber }, sourceEventKey: `quotation:${revision.id}:revision-created`, systemGenerated: true, eventSource: 'quotationRepository' })
     return revision
   },
 }

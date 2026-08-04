@@ -2,6 +2,8 @@ import { initialCustomerDocuments } from '../data/customerDocumentMockData'
 import { DEPARTMENTS, DOCUMENT_SOURCES, DOCUMENT_STATUSES, DOCUMENT_TYPES, DOCUMENT_VISIBILITIES, type CustomerDocument, type CustomerDocumentInput, type CustomerDocumentMetadataInput, type DocumentVersion, type DocumentVersionInput, type Visibility } from '../types/customerDocument'
 import { isDocumentExpired } from '../utils/customerDocumentExpiration'
 import { validateDocumentFileMetadata } from '../utils/customerDocumentFileValidation'
+import { customerActivityRepository } from './customerActivityRepository'
+import { PROTOTYPE_ACTIVITY_ACTOR } from '../types/customerActivity'
 
 const STORAGE_KEY = 'sedar-marketing-customer-documents'
 const id = (prefix: string): string => globalThis.crypto?.randomUUID?.() ?? `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -63,6 +65,7 @@ export const customerDocumentRepository = {
     const firstVersion = versionFrom(input.initialVersion, 1, now)
     const document: CustomerDocument = { id: id('DOC'), customerId: input.customerId, title: input.title, description: input.description, documentType: input.documentType, department: input.department, visibility: input.visibility, source: input.source, status: input.status ?? (isDocumentExpired(input.expiryDate) ? 'Expired' : 'Active'), expiryDate: input.expiryDate, linkedRecords: input.linkedRecords, versions: [firstVersion], currentVersion: 1, createdAt: now, createdBy: input.createdBy, updatedAt: now }
     persist([document, ...load()])
+    customerActivityRepository.appendOnce({ customerId: document.customerId, module: 'Documents', action: 'Uploaded', description: 'Customer document created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document', id: document.id, referenceNumber: document.id }, visibility: 'Internal', metadata: { documentType: document.documentType, version: document.currentVersion }, sourceEventKey: `document:${document.id}:created`, systemGenerated: true, eventSource: 'customerDocumentRepository' })
     return document
   },
   updateMetadata(customerId: string, documentId: string, changes: Partial<CustomerDocumentMetadataInput>): CustomerDocument | undefined {
@@ -73,6 +76,9 @@ export const customerDocumentRepository = {
     const updated: CustomerDocument = { ...current, ...changes, id: current.id, customerId: current.customerId, source: current.source, versions: current.versions, currentVersion: current.currentVersion, createdAt: current.createdAt, updatedAt: new Date().toISOString() }
     documents[index] = updated
     persist(documents)
+    const safeFields: (keyof CustomerDocumentMetadataInput)[] = ['title', 'documentType', 'department', 'visibility', 'expiryDate']
+    const activityChanges = safeFields.filter((field) => current[field] !== updated[field]).map((field) => ({ field: String(field), previousValue: current[field], newValue: updated[field] }))
+    if (activityChanges.length) customerActivityRepository.append({ customerId, module: 'Documents', action: 'Updated', description: 'Document metadata updated.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document', id: documentId, referenceNumber: documentId }, visibility: 'Internal', changes: activityChanges, systemGenerated: true, eventSource: 'customerDocumentRepository' })
     return effectiveStatus(updated)
   },
   addVersion(customerId: string, documentId: string, input: DocumentVersionInput): CustomerDocument | undefined {
@@ -85,6 +91,7 @@ export const customerDocumentRepository = {
     const updated: CustomerDocument = { ...current, versions: [...current.versions, versionFrom(input, nextNumber, now)], currentVersion: nextNumber, updatedAt: now }
     documents[index] = updated
     persist(documents)
+    customerActivityRepository.appendOnce({ customerId, module: 'Documents', action: 'Uploaded', description: 'New document version uploaded.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document', id: documentId, referenceNumber: documentId }, visibility: 'Internal', metadata: { version: nextNumber }, sourceEventKey: `document:${documentId}:version:${nextNumber}`, systemGenerated: true, eventSource: 'customerDocumentRepository' })
     return updated
   },
   updateVisibility(customerId: string, documentId: string, visibility: Visibility): CustomerDocument | undefined {
@@ -98,6 +105,7 @@ export const customerDocumentRepository = {
     const updated: CustomerDocument = { ...documents[index], status: 'Archived', archivedAt: now, archivedBy, updatedAt: now }
     documents[index] = updated
     persist(documents)
+    customerActivityRepository.appendOnce({ customerId, module: 'Documents', action: 'Archived', description: 'Customer document archived.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document', id: documentId, referenceNumber: documentId }, visibility: 'Internal', sourceEventKey: `document:${documentId}:archived`, systemGenerated: true, eventSource: 'customerDocumentRepository' })
     return updated
   },
   delete(customerId: string, documentId: string): boolean {

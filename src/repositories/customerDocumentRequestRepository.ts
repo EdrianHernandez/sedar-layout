@@ -1,5 +1,7 @@
 import { initialCustomerDocumentRequests } from '../data/customerDocumentMockData'
 import { DEPARTMENTS, DOCUMENT_REQUEST_STATUSES, DOCUMENT_TYPES, type CancelDocumentRequestInput, type DocumentRequest, type DocumentRequestInput, type FulfillDocumentRequestInput } from '../types/customerDocument'
+import { customerActivityRepository } from './customerActivityRepository'
+import { PROTOTYPE_ACTIVITY_ACTOR } from '../types/customerActivity'
 
 const STORAGE_KEY = 'sedar-marketing-customer-document-requests'
 const id = (): string => globalThis.crypto?.randomUUID?.() ?? `DOC-REQ-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -28,6 +30,7 @@ export const customerDocumentRequestRepository = {
   create(input: DocumentRequestInput): DocumentRequest {
     const request: DocumentRequest = { ...input, id: id(), status: 'Pending', requestedAt: new Date().toISOString() }
     persist([request, ...load()])
+    customerActivityRepository.appendOnce({ customerId: request.customerId, module: 'Documents', action: 'Created', description: 'Customer document request created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document Request', id: request.id, referenceNumber: request.id }, visibility: 'Internal', metadata: { documentType: request.documentType }, sourceEventKey: `document-request:${request.id}:created`, systemGenerated: true, eventSource: 'customerDocumentRequestRepository' })
     return request
   },
   fulfill(customerId: string, requestId: string, input: FulfillDocumentRequestInput): DocumentRequest | undefined {
@@ -38,6 +41,7 @@ export const customerDocumentRequestRepository = {
     const fulfilled: DocumentRequest = { ...current, status: 'Fulfilled', documentId: input.documentId, fulfilledAt: new Date().toISOString(), fulfilledBy: input.fulfilledBy }
     requests[index] = fulfilled
     persist(requests)
+    customerActivityRepository.appendOnce({ customerId, module: 'Documents', action: 'Status Changed', description: 'Customer document request fulfilled.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document Request', id: requestId, referenceNumber: requestId }, visibility: 'Internal', changes: [{ field: 'status', previousValue: current.status, newValue: fulfilled.status }], sourceEventKey: `document-request:${requestId}:fulfilled`, systemGenerated: true, eventSource: 'customerDocumentRequestRepository' })
     return fulfilled
   },
   cancel(customerId: string, requestId: string, input: CancelDocumentRequestInput): DocumentRequest | undefined {
@@ -48,6 +52,7 @@ export const customerDocumentRequestRepository = {
     const cancelled: DocumentRequest = { ...current, status: 'Cancelled', cancelledAt: new Date().toISOString(), cancelledBy: input.cancelledBy, cancellationReason: input.cancellationReason.trim() }
     requests[index] = cancelled
     persist(requests)
+    customerActivityRepository.appendOnce({ customerId, module: 'Documents', action: 'Cancelled', description: 'Customer document request cancelled.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Document Request', id: requestId, referenceNumber: requestId }, visibility: 'Internal', changes: [{ field: 'status', previousValue: current.status, newValue: cancelled.status }], sourceEventKey: `document-request:${requestId}:cancelled`, systemGenerated: true, eventSource: 'customerDocumentRequestRepository' })
     return cancelled
   },
   delete(customerId: string, requestId: string): boolean {

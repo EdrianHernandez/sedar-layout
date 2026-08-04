@@ -1,0 +1,3 @@
+import type { ActivityGroup, CustomerActivity } from '../types/customerActivity'
+const localDate = (value: string) => { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
+export const groupCustomerActivitiesByDate = (items: CustomerActivity[]): ActivityGroup[] => { const groups = new Map<string, CustomerActivity[]>(); items.forEach((item) => { const key = localDate(item.occurredAt); groups.set(key, [...(groups.get(key) ?? []), item]) }); return [...groups].sort(([a], [b]) => b.localeCompare(a)).map(([date, activities]) => ({ date, activities: activities.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)) })) }

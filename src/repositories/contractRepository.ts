@@ -1,6 +1,8 @@
 import { CONTRACT_STATUSES, SIGNATURE_STATUSES, SIGNATURE_VERIFICATION_STATUSES } from '../data/contractOptions'
 import { initialContracts } from '../data/contractMockData'
 import type { Contract, ContractInput, ContractSignature, ContractSignatureInput, ContractTerminationRequestInput, SendForSignatureInput } from '../types/contract'
+import { customerActivityRepository } from './customerActivityRepository'
+import { PROTOTYPE_ACTIVITY_ACTOR } from '../types/customerActivity'
 
 const STORAGE_KEY = 'sedar-marketing-contracts'
 const uuid = (prefix: string): string => globalThis.crypto?.randomUUID?.() ?? `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -48,6 +50,7 @@ export const contractRepository = {
     const id = uuid('CON')
     const contract: Contract = { ...input, id, status: input.status ?? 'Draft', signatureStatus: input.signatureStatus ?? 'Not Started', signatures: input.signatures ?? [], createdAt: now, updatedAt: now }
     persist([contract, ...this.getAll()])
+    customerActivityRepository.appendOnce({ customerId: contract.customerId, module: 'Contracts', action: 'Created', description: 'Contract created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Contract', id: contract.id, referenceNumber: contract.contractNumber }, visibility: 'Internal', sourceEventKey: `contract:${contract.id}:created`, systemGenerated: true, eventSource: 'contractRepository' })
     return contract
   },
   update(id: string, changes: Partial<Contract>): Contract | undefined {
@@ -59,6 +62,11 @@ export const contractRepository = {
     if (!isContract(updated)) return undefined
     contracts[index] = updated
     persist(contracts)
+    const base = { customerId: updated.customerId, module: 'Contracts' as const, actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Contract', id: updated.id, referenceNumber: updated.contractNumber }, visibility: 'Internal' as const, systemGenerated: true, eventSource: 'contractRepository' }
+    if (current.status !== updated.status) {
+      const action = updated.status === 'For Internal Review' ? 'Submitted' : updated.status === 'Terminated' ? 'Cancelled' : 'Status Changed'
+      customerActivityRepository.appendOnce({ ...base, action, description: `Contract status changed to ${updated.status}.`, changes: [{ field: 'status', previousValue: current.status, newValue: updated.status }], sourceEventKey: `contract:${id}:status:${updated.status}:${updated.updatedAt}` })
+    } else if (current.signatureStatus !== updated.signatureStatus) customerActivityRepository.appendOnce({ ...base, action: 'Status Changed', description: `Contract signature status changed to ${updated.signatureStatus}.`, changes: [{ field: 'signatureStatus', previousValue: current.signatureStatus, newValue: updated.signatureStatus }], sourceEventKey: `contract:${id}:signature-status:${updated.signatureStatus}` })
     return updated
   },
   submitForInternalReview(id: string): Contract | undefined { return this.update(id, { status: 'For Internal Review', submittedForInternalReviewAt: new Date().toISOString() }) },
@@ -81,9 +89,13 @@ export const contractRepository = {
     return this.update(id, { signatures, signatureStatus, status: active ? 'Active' : 'Awaiting Signatures', fullyExecutedAt: fullyExecuted ? new Date().toISOString() : contract.fullyExecutedAt })
   },
   requestTermination(id: string, request: ContractTerminationRequestInput): Contract | undefined {
-    if (!this.getById(id)) return undefined
+    const contract = this.getById(id)
+    if (!contract) return undefined
     const requestedAt = request.requestedAt ?? new Date().toISOString()
-    return this.update(id, { terminationRequest: { ...request, id: request.id ?? uuid('TERM'), requestedAt, status: request.status ?? 'Pending Review' }, terminationEffectiveDate: request.requestedTerminationDate })
+    const terminationRequestId = request.id ?? uuid('TERM')
+    const updated = this.update(id, { terminationRequest: { ...request, id: terminationRequestId, requestedAt, status: request.status ?? 'Pending Review' }, terminationEffectiveDate: request.requestedTerminationDate })
+    if (updated) customerActivityRepository.appendOnce({ customerId: updated.customerId, module: 'Contracts', action: 'Submitted', description: 'Contract termination request submitted.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Contract', id: updated.id, referenceNumber: updated.contractNumber }, visibility: 'Internal', sourceEventKey: `contract:${id}:termination-request:${terminationRequestId}`, systemGenerated: true, eventSource: 'contractRepository' })
+    return updated
   },
 }
 

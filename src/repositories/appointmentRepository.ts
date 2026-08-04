@@ -1,6 +1,9 @@
 import { initialAppointments } from '../data/appointmentMockData'
 import type { Appointment, AppointmentInput, AppointmentStatus, AppointmentStatusEvent, CancelAppointmentInput, CompleteAppointmentInput, ConfirmAppointmentInput, MarkNoShowAppointmentInput, RescheduleAppointmentInput } from '../types/appointment'
 import { isAppointmentOnDate } from '../utils/appointmentDateTime'
+import { customerActivityRepository } from './customerActivityRepository'
+import { PROTOTYPE_ACTIVITY_ACTOR } from '../types/customerActivity'
+import type { ActivityChangeInput } from '../types/customerActivity'
 
 const STORAGE_KEY = 'sedar-marketing-appointments'
 const statuses = new Set<AppointmentStatus>(['Pending Confirmation', 'Scheduled', 'Confirmed', 'Rescheduled', 'Completed', 'Cancelled', 'No Show'])
@@ -60,6 +63,7 @@ export const appointmentRepository = {
     const status = input.status ?? 'Scheduled'
     const created: Appointment = { ...input, id: appointmentId(), status, statusHistory: [{ id: eventId(), toStatus: status, occurredAt: now }], createdAt: now, updatedAt: now }
     save([created, ...load()])
+    customerActivityRepository.appendOnce({ customerId: created.customerId, module: 'Appointments', action: 'Created', description: 'Appointment created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Appointment', id: created.id, referenceNumber: created.id }, visibility: 'Internal', sourceEventKey: `appointment:${created.id}:created`, systemGenerated: true, eventSource: 'appointmentRepository' })
     return created
   },
   update(id: string, changes: Partial<Appointment>): Appointment | undefined {
@@ -70,6 +74,14 @@ export const appointmentRepository = {
     const updated: Appointment = { ...current, ...changes, id: current.id, updatedAt: changes.updatedAt ?? new Date().toISOString() }
     appointments[index] = updated
     save(appointments)
+    const base = { customerId: updated.customerId, module: 'Appointments' as const, actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Appointment', id: updated.id, referenceNumber: updated.id }, visibility: 'Internal' as const, systemGenerated: true, eventSource: 'appointmentRepository' }
+    if (current.status !== updated.status) {
+      const action = updated.status === 'Cancelled' ? 'Cancelled' : 'Status Changed'
+      const descriptions: Partial<Record<AppointmentStatus, string>> = { Confirmed: 'Appointment confirmed.', Rescheduled: 'Appointment rescheduled.', Completed: 'Appointment completed.', Cancelled: 'Appointment cancelled.', 'No Show': 'Appointment marked as no show.' }
+      const safeChanges: ActivityChangeInput[] = [{ field: 'status', previousValue: current.status, newValue: updated.status }]
+      if (updated.status === 'Rescheduled') safeChanges.push({ field: 'schedule', previousValue: current.startAt, newValue: updated.startAt })
+      customerActivityRepository.appendOnce({ ...base, action, description: descriptions[updated.status] ?? `Appointment status changed to ${updated.status}.`, changes: safeChanges, metadata: updated.status === 'Completed' ? { followUpRequired: Boolean(updated.followUp?.required) } : undefined, sourceEventKey: `appointment:${id}:status:${updated.status}:${updated.statusHistory.at(-1)?.id ?? updated.updatedAt}` })
+    }
     return updated
   },
   confirm(id: string, input: ConfirmAppointmentInput = {}): Appointment | undefined {
@@ -81,7 +93,9 @@ export const appointmentRepository = {
     return transition(id, 'Rescheduled', { ...input, previousStartAt: current.startAt, previousEndAt: current.endAt }, { startAt: input.startAt, endAt: input.endAt, rescheduledAt: new Date().toISOString() })
   },
   complete(id: string, input: CompleteAppointmentInput): Appointment | undefined {
-    return transition(id, 'Completed', input, { followUp: { required: input.followUpRequired, dueDate: input.followUpDate, completed: false }, completion: { outcome: input.outcome, customerResponse: input.customerResponse, nextAction: input.nextAction, customerVisibleNotes: input.customerVisibleNotes, internalNotes: input.internalNotes, completedBy: input.changedBy }, completedAt: new Date().toISOString() })
+    const updated = transition(id, 'Completed', input, { followUp: { required: input.followUpRequired, dueDate: input.followUpDate, completed: false }, completion: { outcome: input.outcome, customerResponse: input.customerResponse, nextAction: input.nextAction, customerVisibleNotes: input.customerVisibleNotes, internalNotes: input.internalNotes, completedBy: input.changedBy }, completedAt: new Date().toISOString() })
+    if (updated && input.followUpRequired) customerActivityRepository.appendOnce({ customerId: updated.customerId, module: 'Appointments', action: 'Follow-up Created', description: 'Customer follow-up created.', actor: PROTOTYPE_ACTIVITY_ACTOR, relatedRecord: { type: 'Appointment', id: updated.id, referenceNumber: updated.id }, visibility: 'Internal', metadata: { dueDate: input.followUpDate ?? 'Not provided' }, sourceEventKey: `appointment:${id}:follow-up:${updated.updatedAt}`, systemGenerated: true, eventSource: 'appointmentRepository' })
+    return updated
   },
   markNoShow(id: string, input: MarkNoShowAppointmentInput): Appointment | undefined {
     return transition(id, 'No Show', input, { noShow: { party: input.party, notes: input.notes ?? '', followUpAction: input.followUpAction }, noShowAt: new Date().toISOString() })

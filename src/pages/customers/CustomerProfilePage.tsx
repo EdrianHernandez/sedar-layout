@@ -1,10 +1,9 @@
-import { ArrowLeft, ChevronRight, ClipboardList, ContactRound, FileSignature, ListChecks, ReceiptText, CircleCheckBig } from 'lucide-react'
+import { ArrowLeft, ChevronRight, ClipboardList, FileSignature, ReceiptText, CircleCheckBig } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CustomerContactsTab } from '../../components/customers/contacts/CustomerContactsTab'
 import { CustomerOverviewTab } from '../../components/customers/CustomerOverviewTab'
 import { CustomerProfileHeader } from '../../components/customers/CustomerProfileHeader'
 import { CustomerProfileTabs } from '../../components/customers/CustomerProfileTabs'
-import { CustomerTabPlaceholder } from '../../components/customers/CustomerTabPlaceholder'
 import { CustomerTransactionHistoryTab } from '../../components/customers/CustomerTransactionHistoryTab'
 import { CustomerServiceRequestsTab } from '../../components/customers/service-requests/CustomerServiceRequestsTab'
 import { CustomerQuotationsTab } from '../../components/customers/quotations/CustomerQuotationsTab'
@@ -12,6 +11,7 @@ import { CustomerContractsTab } from '../../components/customers/contracts/Custo
 import { CustomerAppointmentsTab } from '../../components/customers/appointments/CustomerAppointmentsTab'
 import { AppointmentCalendarInteractions } from '../../components/customers/appointments/AppointmentCalendarInteractions'
 import { CustomerDocumentsTab } from '../../components/customers/documents/CustomerDocumentsTab'
+import { CustomerActivityLogTab } from '../../components/customers/activity-log/CustomerActivityLogTab'
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { initialCustomers } from '../../data/customerMockData'
 import { profileTabs, profileTabSlugs, type ProfileTab } from '../../data/customerProfileTabs'
@@ -21,10 +21,6 @@ import { appointmentRepository } from '../../repositories/appointmentRepository'
 import { sortAppointments } from '../../utils/appointmentSorting'
 
 interface CustomerProfilePageProps { onNotify: (message: string) => void }
-
-const placeholders: Record<Exclude<ProfileTab, 'Overview' | 'Contacts' | 'Service Requests' | 'Quotations' | 'Contracts' | 'Transaction History' | 'Appointments' | 'Documents'>, { icon: typeof ContactRound; description: string }> = {
-  'Activity Log': { icon: ListChecks, description: 'Review the complete customer activity record.' },
-}
 
 export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
   const { customerId } = useParams()
@@ -73,7 +69,7 @@ export function CustomerProfilePage({ onNotify }: CustomerProfilePageProps) {
         {activeTab === 'Transaction History' && <><header className="transaction-history-header"><h2>Transaction History</h2></header><CustomerTransactionHistoryTab customer={customer} onNotify={onNotify} /></>}
         {activeTab === 'Appointments' && <><CustomerAppointmentsTab customer={customer} onNotify={onNotify} /><AppointmentCalendarInteractions customerId={customer.id} /></>}
         {activeTab === 'Documents' && <CustomerDocumentsTab customer={customer} onNotify={onNotify} />}
-        {activeTab === 'Activity Log' && <CustomerTabPlaceholder title={activeTab} {...placeholders[activeTab]} />}
+        {activeTab === 'Activity Log' && <CustomerActivityLogTab customer={customer} onNotify={onNotify} />}
       </div>
     </div>
   </div>
