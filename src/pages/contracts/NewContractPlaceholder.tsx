@@ -1,0 +1,8 @@
+import { ArrowLeft, FilePlus2 } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { initialCustomers } from '../../data/customerMockData'
+import { quotationRepository } from '../../repositories/quotationRepository'
+import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
+import { formatCurrency } from '../../utils/formatCurrency'
+
+export function NewContractPlaceholder() { const [params] = useSearchParams(); const customer = initialCustomers.find((item) => item.id === params.get('customerId')); const quotation = quotationRepository.getById(params.get('quotationId') ?? ''); const request = quotation ? serviceRequestRepository.findById(quotation.serviceRequestId) : undefined; const back = customer ? `/marketing/customers/${customer.id}?tab=contracts` : '/marketing/contracts'; return <section className="contract-placeholder-page"><Link className="contract-back-link" to={back}><ArrowLeft size={15} />Back to Contracts</Link><div className="contract-builder-placeholder"><span><FilePlus2 size={24} /></span><h1>Create Contract</h1>{customer && quotation ? <dl><div><dt>Customer</dt><dd>{customer.companyName}</dd></div><div><dt>Approved Quotation</dt><dd>{quotation.quotationNumber}</dd></div><div><dt>Related Request</dt><dd>{request?.referenceNumber ?? quotation.serviceRequestId}</dd></div><div><dt>Service and Vessel</dt><dd>{request ? `${request.service.type} · ${request.vessel.name}` : 'Not provided'}</dd></div><div><dt>Approved Amount</dt><dd>{formatCurrency(quotation.totalAmount)}</dd></div></dl> : <p>Select a customer and approved quotation before preparing a contract.</p>}<strong>The contract builder will be implemented next.</strong></div></section> }

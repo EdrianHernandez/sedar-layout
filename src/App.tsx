@@ -14,6 +14,8 @@ import { NewServiceRequestPage } from './pages/service-requests/NewServiceReques
 import { ServiceRequestDetailsPlaceholder } from './pages/service-requests/ServiceRequestDetailsPlaceholder'
 import { NewQuotationPlaceholder } from './pages/quotations/NewQuotationPlaceholder'
 import { QuotationDetailsPlaceholder } from './pages/quotations/QuotationDetailsPlaceholder'
+import { ContractDetailsPlaceholder } from './pages/contracts/ContractDetailsPlaceholder'
+import { NewContractPlaceholder } from './pages/contracts/NewContractPlaceholder'
 import type { RequestFilter } from './types'
 
 export default function App() {
@@ -78,6 +80,8 @@ export default function App() {
         <Route path="/marketing/quotations/new" element={<NewQuotationPlaceholder />} />
         <Route path="/marketing/quotations/:quotationId" element={<QuotationDetailsPlaceholder />} />
         <Route path="/marketing/contracts" element={<PlaceholderPage title="Contracts" />} />
+        <Route path="/marketing/contracts/new" element={<NewContractPlaceholder />} />
+        <Route path="/marketing/contracts/:contractId" element={<ContractDetailsPlaceholder />} />
         <Route path="/marketing/appointments" element={<PlaceholderPage title="Appointments" />} />
         <Route path="/marketing/reports" element={<PlaceholderPage title="Reports" />} />
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
