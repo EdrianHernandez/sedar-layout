@@ -22,9 +22,9 @@ export function Sidebar({ desktopOpen, mobileOpen, onDesktopOpen, onDesktopClose
       <aside className={`sidebar${desktopOpen ? '' : ' desktop-collapsed'}${mobileOpen ? ' mobile-open' : ''}`} aria-label="Marketing navigation">
         <div className="brand-block">
           {desktopOpen ? (
-            <div className="brand-mark">S</div>
+            <div className="brand-mark"><img src="/logo.png" alt="" /></div>
           ) : (
-            <button type="button" className="brand-mark brand-expand" aria-label="Expand sidebar" aria-expanded={false} title="Expand sidebar" onClick={onDesktopOpen}>S</button>
+            <button type="button" className="brand-mark brand-expand" aria-label="Expand sidebar" aria-expanded={false} title="Expand sidebar" onClick={onDesktopOpen}><img src="/logo.png" alt="" /></button>
           )}
           <div className="brand-copy"><strong>SEDAR</strong></div>
           <button type="button" className="sidebar-close desktop-collapse" aria-label="Collapse sidebar" aria-expanded={desktopOpen} onClick={onDesktopClose}><PanelLeft size={17} /></button>
