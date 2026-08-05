@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Building2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { customerStatuses, customerTypes } from '../../data/customerMockData'
 import type { CustomerStatus, CustomerType, NewCustomerInput } from '../../types/customer'
@@ -75,29 +75,30 @@ export function AddCustomerModal({ representatives, onClose, onSubmit }: AddCust
 
   return (
     <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <div ref={dialogRef} className="customer-modal" role="dialog" aria-modal="true" aria-labelledby="add-customer-title" aria-describedby="add-customer-description">
-        <header className="modal-header">
+      <div ref={dialogRef} className="customer-modal add-customer-modal" role="dialog" aria-modal="true" aria-labelledby="add-customer-title" aria-describedby="add-customer-description">
+        <header className="modal-header add-customer-modal-header">
+          <span className="add-customer-modal-icon"><Building2 size={20} /></span>
           <div><h2 id="add-customer-title">Add Customer</h2><p id="add-customer-description">Create a new customer account for Marketing.</p></div>
           <button type="button" aria-label="Close add customer dialog" onClick={onClose}><X size={18} /></button>
         </header>
         <form onSubmit={submit} noValidate>
-          <div className="modal-body">
-            <fieldset><legend>Company Information</legend><div className="form-grid">
+          <div className="modal-body add-customer-modal-body">
+            <fieldset className="add-customer-form-section"><legend>Company Information</legend><div className="form-grid">
               {input('companyName', 'Company Name', { required: true, ref: firstFieldRef })}
               <label className="form-field"><span>Customer Type <em>*</em></span><select value={form.customerType} aria-invalid={Boolean(errors.customerType)} onChange={(event) => update('customerType', event.target.value as CustomerType)}><option value="">Select customer type</option>{customerTypes.map((type) => <option key={type}>{type}</option>)}</select>{errors.customerType && <small>{errors.customerType}</small>}</label>
               {input('businessAddress', 'Business Address')}{input('cityProvince', 'City/Province')}{input('country', 'Country')}{input('taxId', 'Tax Identification Number')}{input('companyEmail', 'Company Email', { type: 'email' })}{input('companyPhone', 'Company Phone', { type: 'tel' })}{input('website', 'Website')}
             </div></fieldset>
-            <fieldset><legend>Primary Contact</legend><div className="form-grid">
+            <fieldset className="add-customer-form-section"><legend>Primary Contact</legend><div className="form-grid">
               {input('firstName', 'First Name', { required: true })}{input('lastName', 'Last Name', { required: true })}{input('position', 'Position')}{input('contactEmail', 'Email Address', { required: true, type: 'email' })}{input('contactPhone', 'Phone Number', { type: 'tel' })}
             </div></fieldset>
-            <fieldset><legend>Marketing Information</legend><div className="form-grid">
+            <fieldset className="add-customer-form-section"><legend>Marketing Information</legend><div className="form-grid">
               <label className="form-field"><span>Account Status</span><select value={form.status} onChange={(event) => update('status', event.target.value as CustomerStatus)}>{customerStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
               <label className="form-field"><span>Assigned Marketing Representative</span><select value={form.assignedRepresentative} onChange={(event) => update('assignedRepresentative', event.target.value)}><option value="">Unassigned</option>{representatives.map((representative) => <option key={representative}>{representative}</option>)}</select></label>
               <label className="form-field"><span>Lead Source</span><select value={form.leadSource} onChange={(event) => update('leadSource', event.target.value)}><option value="">Select lead source</option>{['Direct Inquiry', 'Referral', 'Existing Relationship', 'Website', 'Industry Event', 'Other'].map((source) => <option key={source}>{source}</option>)}</select></label>
               <label className="form-field form-field-wide"><span>Notes</span><textarea rows={3} value={form.notes} onChange={(event) => update('notes', event.target.value)} /></label>
             </div></fieldset>
           </div>
-          <footer className="modal-footer"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit">Add Customer</button></footer>
+          <footer className="modal-footer add-customer-modal-footer"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit">Add Customer</button></footer>
         </form>
       </div>
     </div>
