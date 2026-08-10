@@ -21,7 +21,7 @@ export interface CustomerTransaction {
   status: TransactionStatusGroup
   sourceStatus: string
   amount?: number
-  currency?: 'PHP'
+  currency?: 'PHP' | 'USD'
   visibility: TransactionVisibility
   vesselName?: string
   serviceType?: string

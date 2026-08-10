@@ -7,6 +7,7 @@ import { CustomerStatusBadge } from '../../components/customers/CustomerStatusBa
 import { MetricCard } from '../../components/dashboard/MetricCard'
 import { customerStatuses, customerTypes, initialCustomers } from '../../data/customerMockData'
 import type { Customer, CustomerStatus, CustomerType, NewCustomerInput } from '../../types/customer'
+import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 
 interface CustomersPageProps { onNotify: (message: string) => void }
 
@@ -36,6 +37,10 @@ export function CustomersPage({ onNotify }: CustomersPageProps) {
   const startIndex = (currentPage - 1) * rowsPerPage
   const visibleCustomers = filteredCustomers.slice(startIndex, startIndex + rowsPerPage)
   const filtersActive = Boolean(search || status || type || representative)
+  const activeRequestCounts = serviceRequestRepository.getAll().reduce((counts, request) => {
+    if (!['Completed', 'Cancelled'].includes(request.status)) counts.set(request.customerId, (counts.get(request.customerId) ?? 0) + 1)
+    return counts
+  }, new Map<string, number>())
 
   const updateFilter = (update: () => void) => { update(); setPage(1) }
   const clearFilters = () => {
@@ -103,7 +108,7 @@ export function CustomersPage({ onNotify }: CustomersPageProps) {
                 <td className="customer-id">{customer.id}</td>
                 <td><div className="company-cell"><span className="company-avatar">{customer.companyInitials}</span><Link to={`/marketing/customers/${customer.id}`} state={{ companyName: customer.companyName }}>{customer.companyName}</Link></div></td>
                 <td><strong>{customer.primaryContact.name}</strong><span>{customer.primaryContact.position || 'Primary contact'}</span></td>
-                <td>{customer.customerType}</td><td className="number-column">{customer.activeRequests}</td><td className="number-column">{customer.activeContracts}</td><td>{formatDate(customer.lastInteraction)}</td><td><CustomerStatusBadge status={customer.status} /></td>
+                <td>{customer.customerType}</td><td className="number-column">{activeRequestCounts.get(customer.id) ?? 0}</td><td className="number-column">{customer.activeContracts}</td><td>{formatDate(customer.lastInteraction)}</td><td><CustomerStatusBadge status={customer.status} /></td>
                 <td className="actions-column"><CustomerActionsMenu customer={customer} open={openMenu === customer.id} onToggle={() => setOpenMenu((current) => current === customer.id ? null : customer.id)} onClose={() => setOpenMenu(null)} onNotify={onNotify} /></td>
               </tr>)}</tbody>
             </table>

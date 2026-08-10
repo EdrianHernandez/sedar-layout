@@ -1,28 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { DashboardHeader } from './components/dashboard/DashboardHeader'
-import { MetricCard } from './components/dashboard/MetricCard'
-import { ServiceRequestsPanel } from './components/dashboard/ServiceRequestsPanel'
-import { TodaySchedulePanel } from './components/dashboard/TodaySchedulePanel'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
-import { PlaceholderPage } from './components/pages/PlaceholderPage'
 import { Toast } from './components/ui/Toast'
-import { metrics } from './data/mockData'
 import { CustomerProfilePage } from './pages/customers/CustomerProfilePage'
 import { CustomersPage } from './pages/customers/CustomersPage'
 import { NewServiceRequestPage } from './pages/service-requests/NewServiceRequestPage'
-import { ServiceRequestDetailsPlaceholder } from './pages/service-requests/ServiceRequestDetailsPlaceholder'
+import { ServiceRequestDetailsPage } from './pages/service-requests/ServiceRequestDetailsPage'
+import { ServiceRequestsPage } from './pages/service-requests/ServiceRequestsPage'
 import { NewQuotationPlaceholder } from './pages/quotations/NewQuotationPlaceholder'
 import { QuotationDetailsPlaceholder } from './pages/quotations/QuotationDetailsPlaceholder'
+import { QuotationsPage } from './pages/quotations/QuotationsPage'
 import { ContractDetailsPlaceholder } from './pages/contracts/ContractDetailsPlaceholder'
+import { AppointmentsPage } from './pages/appointments/AppointmentsPage'
+import { MarketingReportsPage } from './pages/reports/MarketingReportsPage'
 import { NewContractPlaceholder } from './pages/contracts/NewContractPlaceholder'
-import type { RequestFilter } from './types'
+import { ContractsPage } from './pages/contracts/ContractsPage'
+import { MarketingDashboardPage } from './pages/dashboard/MarketingDashboardPage'
 
 export default function App() {
-  const navigate = useNavigate()
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('sedar-marketing-sidebar-collapsed') !== 'true')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [filter, setFilter] = useState<RequestFilter>('ALL')
   const [toast, setToast] = useState('')
 
   useEffect(() => {
@@ -52,7 +49,6 @@ export default function App() {
   }, [mobileSidebarOpen])
 
   const notify = (message: string) => setToast(message)
-
   return (
     <AppShell
       desktopSidebarOpen={desktopSidebarOpen}
@@ -63,27 +59,20 @@ export default function App() {
     >
       <Routes>
         <Route path="/" element={<Navigate to="/marketing/dashboard" replace />} />
-        <Route path="/marketing/dashboard" element={<>
-          <DashboardHeader onNewRequest={() => navigate('/marketing/service-requests/new')} onSchedule={() => notify('Appointment scheduler will open here.')} />
-          <section className="metrics-grid" aria-label="Dashboard metrics">{metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}</section>
-          <div className="panels-grid">
-            <ServiceRequestsPanel filter={filter} onFilterChange={setFilter} />
-            <TodaySchedulePanel onViewCalendar={() => notify('Full calendar selected.')} />
-          </div>
-        </>} />
-        <Route path="/marketing/service-requests" element={<PlaceholderPage title="Service Requests" />} />
+        <Route path="/marketing/dashboard" element={<MarketingDashboardPage onNotify={notify} />} />
+        <Route path="/marketing/service-requests" element={<ServiceRequestsPage onNotify={notify} />} />
         <Route path="/marketing/service-requests/new" element={<NewServiceRequestPage onNotify={notify} />} />
-        <Route path="/marketing/service-requests/:requestId" element={<ServiceRequestDetailsPlaceholder />} />
+        <Route path="/marketing/service-requests/:requestId" element={<ServiceRequestDetailsPage onNotify={notify} />} />
         <Route path="/marketing/customers" element={<CustomersPage onNotify={notify} />} />
         <Route path="/marketing/customers/:customerId" element={<CustomerProfilePage onNotify={notify} />} />
-        <Route path="/marketing/quotations" element={<PlaceholderPage title="Quotations" />} />
+        <Route path="/marketing/quotations" element={<QuotationsPage onNotify={notify} />} />
         <Route path="/marketing/quotations/new" element={<NewQuotationPlaceholder />} />
-        <Route path="/marketing/quotations/:quotationId" element={<QuotationDetailsPlaceholder />} />
-        <Route path="/marketing/contracts" element={<PlaceholderPage title="Contracts" />} />
+        <Route path="/marketing/quotations/:quotationId" element={<QuotationDetailsPlaceholder onNotify={notify} />} />
+        <Route path="/marketing/contracts" element={<ContractsPage onNotify={notify} />} />
         <Route path="/marketing/contracts/new" element={<NewContractPlaceholder />} />
-        <Route path="/marketing/contracts/:contractId" element={<ContractDetailsPlaceholder />} />
-        <Route path="/marketing/appointments" element={<PlaceholderPage title="Appointments" />} />
-        <Route path="/marketing/reports" element={<PlaceholderPage title="Reports" />} />
+        <Route path="/marketing/contracts/:contractId" element={<ContractDetailsPlaceholder onNotify={notify} />} />
+        <Route path="/marketing/appointments" element={<AppointmentsPage onNotify={notify} />} />
+        <Route path="/marketing/reports" element={<MarketingReportsPage />} />
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
       </Routes>
       {toast && <Toast message={toast} onClose={() => setToast('')} />}

@@ -1,0 +1,1 @@
+export interface ContractRequest { id: string; referenceNumber: string; quotationId: string; serviceRequestId: string; customerId: string; requestedBy: string; status: 'Requested' | 'Under Preparation' | 'Completed' | 'Cancelled'; createdAt: string; updatedAt: string }

@@ -1,4 +1,12 @@
 export type AppointmentType =
+  | 'Initial Consultation'
+  | 'Service Request Discussion'
+  | 'Quotation Presentation'
+  | 'Customer Follow-up'
+  | 'Port or Site Visit'
+  | 'Document Submission'
+  | 'Renewal Discussion'
+  | 'Online Meeting'
   | 'Client Meeting'
   | 'Service Consultation'
   | 'Site Inspection'
@@ -8,9 +16,10 @@ export type AppointmentType =
   | 'Follow-up Call'
   | 'Other'
 
-export type AppointmentStatus = 'Pending Confirmation' | 'Scheduled' | 'Confirmed' | 'Rescheduled' | 'Completed' | 'Cancelled' | 'No Show'
+export type AppointmentStatus = 'Draft' | 'Pending Confirmation' | 'Scheduled' | 'Confirmed' | 'Rescheduled' | 'In Progress' | 'Completed' | 'Cancelled' | 'No Show'
+export type ConfirmationStatus = 'Not Sent' | 'Awaiting Response' | 'Confirmed' | 'Declined'
 
-export type MeetingMethod = 'In Person' | 'Phone Call' | 'Video Meeting'
+export type MeetingMethod = 'In Person' | 'Phone Call' | 'Video Meeting' | 'SEDAR Office' | 'Customer Office' | 'Port or Terminal' | 'Onboard Vessel' | 'Online Meeting' | 'Other'
 
 export type AppointmentRelatedRecordType = 'Service Request' | 'Quotation' | 'Contract Request' | 'Contract'
 export type AppointmentReminder = 'No Reminder' | '15 Minutes Before' | '30 Minutes Before' | '1 Hour Before' | '1 Day Before'
@@ -36,12 +45,24 @@ export interface AppointmentStatusEvent {
 
 export interface Appointment {
   id: string
+  appointmentNumber?: string
   customerId: string
   contactId: string
   title: string
   description?: string
   type: AppointmentType
   status: AppointmentStatus
+  confirmationStatus?: ConfirmationStatus
+  isAllDay?: boolean
+  internalAttendeeIds?: string[]
+  customerAttendeeIds?: string[]
+  customerMessage?: string
+  documentsToPrepare?: string[]
+  conflictOverrideReason?: string
+  invitationSentAt?: string
+  customerRespondedAt?: string
+  actualStartAt?: string
+  actualEndAt?: string
   meetingMethod: MeetingMethod
   startAt: string
   endAt: string
@@ -79,7 +100,7 @@ export type AppointmentInput = Omit<
   Appointment,
   'id' | 'status' | 'statusHistory' | 'createdAt' | 'updatedAt' | 'confirmedAt' | 'rescheduledAt' | 'completedAt' | 'cancelledAt' | 'noShowAt'
 > & {
-  status?: Extract<AppointmentStatus, 'Pending Confirmation' | 'Scheduled' | 'Confirmed'>
+  status?: Extract<AppointmentStatus, 'Draft' | 'Pending Confirmation' | 'Scheduled' | 'Confirmed'>
 }
 
 export interface ConfirmAppointmentInput {
@@ -96,6 +117,8 @@ export interface RescheduleAppointmentInput {
 }
 
 export interface CompleteAppointmentInput {
+  actualStartAt?: string
+  actualEndAt?: string
   outcome: string
   customerResponse?: string
   nextAction?: string

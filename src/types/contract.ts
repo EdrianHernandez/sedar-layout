@@ -1,5 +1,6 @@
-export type ContractStatus = 'Draft' | 'For Internal Review' | 'Ready for Signature' | 'Awaiting Signatures' | 'Active' | 'Terminated' | 'Expired' | 'Superseded'
-export type SignatureStatus = 'Not Started' | 'SEDAR Signed' | 'Customer Signed' | 'Fully Executed' | 'Declined'
+export type ContractStatus = 'Requested' | 'Drafting' | 'Internal Review' | 'Approved for Signature' | 'Sent for Signature' | 'Partially Signed' | 'Fully Executed' | 'Active' | 'Suspended' | 'Terminated' | 'Expired' | 'Draft' | 'For Internal Review' | 'Ready for Signature' | 'Awaiting Signatures' | 'Superseded'
+export type SignatureStatus = 'Not Ready for Signature' | 'Awaiting SEDAR Signature' | 'Awaiting Customer Signature' | 'Partially Signed' | 'Fully Signed' | 'Not Started' | 'SEDAR Signed' | 'Customer Signed' | 'Fully Executed' | 'Declined'
+export type ContractReviewStatus = 'Not Started' | 'Not Required' | 'Pending' | 'Approved' | 'Revision Required' | 'Rejected'
 export type SignatureParty = 'SEDAR' | 'Customer'
 export type SignatureVerificationStatus = 'Pending Verification' | 'Verified' | 'Rejected'
 export type ContractValidityClassification = 'Upcoming' | 'Active' | 'Expiring Soon' | 'Expired'
@@ -18,7 +19,11 @@ export interface ContractSignature {
   supportingDocumentName?: string
   verificationStatus: SignatureVerificationStatus
   internalNotes?: string
+  contractVersion?: number
+  receivedAt?: string
+  documentId?: string
 }
+export interface ContractCorrectionRequest { id: string; section: string; requestedChange: string; reason: string; priority: 'Normal' | 'High' | 'Urgent'; supportingDocumentName?: string; requestedBy: string; requestedAt: string; status: 'Requested' | 'Responded' | 'Closed'; response?: string }
 
 export interface ContractTerminationRequest {
   id: string
@@ -34,6 +39,8 @@ export interface ContractTerminationRequest {
 export interface Contract {
   id: string
   contractNumber: string
+  version?: number
+  contractRequestNumber?: string
   customerId: string
   contactId: string
   quotationId: string
@@ -47,7 +54,36 @@ export interface Contract {
   effectiveDate: string
   expirationDate: string
   contractValue: number
-  currency: 'PHP'
+  currency: 'PHP' | 'USD'
+  contractType?: string
+  serviceCoverage?: string
+  operationsReviewStatus?: ContractReviewStatus
+  financeReviewStatus?: ContractReviewStatus
+  legalReviewStatus?: ContractReviewStatus
+  managementApprovalStatus?: ContractReviewStatus
+  assignedRepresentativeId?: string
+  requestedEffectiveDate?: string
+  requestedExpirationDate?: string
+  customerSignatoryName?: string
+  customerSignatoryPosition?: string
+  customerEmail?: string
+  billingAddress?: string
+  specialCustomerRequirements?: string
+  requiredCompletionDate?: string
+  marketingNotes?: string
+  supportingDocumentNames?: string[]
+  requestedAt?: string
+  lastReminderAt?: string
+  amendmentRequestedAt?: string
+  renewalRequestedAt?: string
+  renewalNoticeDate?: string
+  approvedForSignatureAt?: string
+  activatedAt?: string
+  legalReviewer?: string
+  financeReviewer?: string
+  operationsReviewer?: string
+  authorizedSedarSignatory?: string
+  correctionRequests?: ContractCorrectionRequest[]
   termsAndConditions?: string
   internalNotes?: string
   preparedBy: string
@@ -80,6 +116,7 @@ export interface SendForSignatureInput {
   sedarSignatoryName: string
   customerSignatoryName: string
 }
+export interface ContractRequestDetails { contractType: string; requestedEffectiveDate: string; requestedExpirationDate: string; customerSignatoryName: string; customerSignatoryPosition: string; customerEmail: string; billingAddress: string; serviceCoverage: string; specialCustomerRequirements?: string; requiredCompletionDate: string; marketingNotes?: string; supportingDocumentNames?: string[] }
 
 export type ContractSignatureInput = Omit<ContractSignature, 'id'> & { id?: string }
 export type ContractTerminationRequestInput = Omit<ContractTerminationRequest, 'id' | 'requestedAt' | 'status'> & { id?: string; requestedAt?: string; status?: ContractTerminationRequest['status'] }
