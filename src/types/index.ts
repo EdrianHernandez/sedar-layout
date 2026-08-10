@@ -11,6 +11,16 @@ export interface NavigationGroup {
   items: NavigationItem[]
 }
 
+export type Department = 'marketing' | 'technical'
+
+export interface DepartmentConfig {
+  id: Department
+  label: string
+  sublabel: string
+  routePrefix: string
+  defaultPath: string
+}
+
 export type RequestFilter = 'ALL' | 'ACTIVE' | 'DRAFTS'
 
 export interface Metric {
