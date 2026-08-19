@@ -1,8 +1,8 @@
-import { useDeferredValue, useEffect, useState, type ComponentType } from 'react'
+﻿import { useDeferredValue, useEffect, useState, type ComponentType } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowRight, CalendarDays, Check, ChevronDown, CircleDot, ClipboardCheck, Clock3, FileCheck2, FileText, ListTodo, MessageSquareText, MoreHorizontal, Plus, RefreshCw, Search, UserPlus, Video } from 'lucide-react'
 import { initialCustomers } from '../../data/customerMockData'
-import { formatDashboardDate, formatDashboardTime, formatRelativeDate, formatShortDate, getDashboardGreeting, getManilaDateKey } from '../../dashboard/marketingDashboardFormatters'
+import { formatDashboardTime, formatRelativeDate, formatShortDate, getDashboardGreeting, getManilaDateKey } from '../../dashboard/marketingDashboardFormatters'
 import { getMarketingDashboardData } from '../../dashboard/marketingDashboardSelectors'
 import type { DashboardData, DashboardFollowUp, DashboardMetric, DashboardPriority, DashboardTask, MarketingDashboardSource, WorkQueueTab } from '../../dashboard/marketingDashboardTypes'
 import { appointmentRepository } from '../../repositories/appointmentRepository'
@@ -78,7 +78,7 @@ export function MarketingDashboardPage({ onNotify }: MarketingDashboardPageProps
 
 function DashboardHeader({ now, currentUser, onNewRequest, onSchedule, feasibleRequestId, acceptedQuotationId }: { now: Date; currentUser?: string; onNewRequest: () => void; onSchedule: () => void; feasibleRequestId?: string; acceptedQuotationId?: string }) {
   return <header className="action-dashboard-header">
-    <div className="dashboard-heading"><span>Marketing command desk</span><h1>Dashboard</h1>{currentUser ? <><strong>{getDashboardGreeting(now)}, {currentUser.split(' ')[0]}</strong><p>Here’s what needs your attention today.</p></> : <><strong>Marketing Dashboard</strong><p>Here’s what needs your attention today.</p></>}<time dateTime={getManilaDateKey(now)}>{formatDashboardDate(now)} · Asia/Manila</time></div>
+    <div className="dashboard-heading"><h1>Dashboard</h1>{currentUser ? <><strong>{getDashboardGreeting(now)}, {currentUser.split(' ')[0]}</strong><p>Here’s what needs your attention today.</p></> : <><strong>Marketing Dashboard</strong><p>Here’s what needs your attention today.</p></>}</div>
     <div className="dashboard-header-tools">
       <label className="dashboard-global-search"><Search size={15}/><span className="sr-only">Search Marketing modules</span><input placeholder="Search records" onKeyDown={(event) => { if (event.key === 'Enter' && event.currentTarget.value.trim()) window.location.assign(`/marketing/service-requests?search=${encodeURIComponent(event.currentTarget.value.trim())}`) }} /></label>
       <button className="button button-primary" onClick={onNewRequest}><Plus size={15}/> New Service Request</button>
