@@ -579,12 +579,13 @@ td { border-top: 1px solid #e2e2e2; }
 .global-quotations-header > div:last-child { display: flex; gap: 8px; }
 .global-quotations-header h1 { margin: 0; color: #102f49; font-size: 28px; font-weight: 700; line-height: 1.15; }
 .global-quotations-header p { margin: 8px 0 0; color: #687985; font-size: 12px; }
-.global-quotation-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
-.global-quotation-summary article { position: relative; min-width: 0; min-height: 88px; padding: 13px 12px; overflow: hidden; border: 1px solid #d3dce2; border-radius: 9px; background: #fff; box-shadow: 0 2px 7px rgba(20,46,65,.04); }
-.global-quotation-summary svg { position: absolute; right: 10px; top: 11px; color: #54758c; }
-.global-quotation-summary span { max-width: calc(100% - 23px); display: block; color: #758691; font-size: 7px; font-weight: 800; letter-spacing: .05em; line-height: 1.35; text-transform: uppercase; }
-.global-quotation-summary strong { margin-top: 15px; display: block; overflow: hidden; color: #17344c; font-size: 19px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
-.global-quotation-summary article:last-child { border-color: #274a68; background: var(--sidebar); }.global-quotation-summary article:last-child span, .global-quotation-summary article:last-child svg { color: #9fb8c9; }.global-quotation-summary article:last-child strong { color: #fff; font-size: 15px; }
+.global-quotation-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.global-quotation-summary article { position: relative; min-width: 0; min-height: 110px; padding: 16px 18px; overflow: hidden; border: 1px solid #234766; border-radius: 12px; background: var(--sidebar); box-shadow: 0 5px 14px rgba(6,29,55,.13); transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.global-quotation-summary svg { position: absolute; right: 6px; bottom: -9px; width: 61px; height: 61px; color: #b8cddd; opacity: .2; }
+.global-quotation-summary span { max-width: calc(100% - 23px); display: block; color: #b8c8d5; font-size: 10px; font-weight: 700; letter-spacing: .07em; line-height: 1.35; text-transform: uppercase; }
+.global-quotation-summary strong { margin-top: 12px; display: block; overflow: hidden; color: #fff; font-size: 30px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.global-quotation-summary article:hover { border-color: #416580; box-shadow: 0 8px 19px rgba(6,29,55,.18); transform: translateY(-1px); }
+
 .global-quotation-workspace { margin-top: 14px; overflow: hidden; border: 1px solid #d3dce2; border-radius: 10px; background: #fff; }
 .global-quotation-tabs { min-width: 0; display: flex; border-bottom: 1px solid #dce3e8; background: #f8fafb; }
 .global-quotation-tabs button { min-height: 48px; padding: 0 15px; flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-bottom: 3px solid transparent; color: #576b7a; background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
