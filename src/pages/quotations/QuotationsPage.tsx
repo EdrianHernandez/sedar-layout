@@ -12,7 +12,6 @@ import { quotationRepository } from '../../repositories/quotationRepository'
 import { serviceRequestRepository } from '../../repositories/serviceRequestRepository'
 import type { Quotation, QuotationResponse } from '../../types/quotation'
 import { formatCurrency } from '../../utils/formatCurrency'
-import { getQuotationValidity } from '../../utils/quotationValidity'
 import { getInternalApprovalStatus, getQuotationDisplayStatus, isQuotationEligibleRequest, type QuotationAction, type QuotationDisplayStatus } from '../../utils/quotationWorkflow'
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })

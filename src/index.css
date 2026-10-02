@@ -1658,18 +1658,18 @@ td { border-top: 1px solid #e2e2e2; }
 .technical-dashboard { min-width: 0; padding-top: 18px; display: grid; gap: 14px; color: #294252; }
 .tech-dashboard-header { min-height: 76px; padding: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .tech-header-text { min-width: 0; }
-.tech-header-kicker { display: block; margin-bottom: 4px; color: #e36b4b; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.tech-header-kicker { display: block; margin-bottom: 4px; color: #e36b4b; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .tech-dashboard-header h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; }
-.tech-header-text p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+.tech-header-text p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .tech-header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 .tech-summary-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .tech-summary-card { min-height: 120px; padding: 16px 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 .tech-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.tech-card-label { color: #58636e; font-size: 9px; font-weight: 700; letter-spacing: .35px; text-transform: uppercase; }
+.tech-card-label { color: #58636e; font-size: 11px; font-weight: 700; letter-spacing: .35px; text-transform: uppercase; }
 .tech-card-icon { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border-radius: 8px; }
-.tech-card-value { display: block; margin-top: 14px; font-size: 26px; line-height: 1; }
-.tech-card-detail { display: block; margin-top: 10px; color: var(--muted); font-size: 9px; font-weight: 700; }
+.tech-card-value { display: block; margin-top: 14px; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tech-card-detail { display: block; margin-top: 10px; color: var(--muted); font-size: 12px; font-weight: 700; }
 
 .tech-dashboard-panels { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
 .tech-panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
@@ -1730,3 +1730,24 @@ td { border-top: 1px solid #e2e2e2; }
 @media(max-width:900px){.tech-summary-cards{grid-template-columns:repeat(2,1fr)}.tech-dashboard-header{flex-direction:column}.tech-header-actions{width:100%}.tech-header-actions .button{flex:1}}
 @media(max-width:767px){.technical-dashboard{padding-top:12px}.tech-summary-cards{grid-template-columns:1fr 1fr}.tech-header-actions{flex-wrap:wrap}}
 @media(max-width:480px){.tech-summary-cards{grid-template-columns:1fr}}
+
+/* ── Chief Engineer module (light ERP helpers) ─────────────────────────── */
+.button-lg { min-height: 48px; padding: 0 16px; font-size: 11px; }
+.button-xl { min-height: 64px; padding: 0 22px; font-size: 13px; letter-spacing: .04em; }
+
+.chief-entry-tile { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.chief-entry-tile:hover { border-color: var(--orange); box-shadow: 0 6px 16px rgba(6,29,55,.10); transform: translateY(-1px); }
+
+.chief-entry-filled { background: #152f48; border-color: #152f48; color: #fff; }
+.chief-entry-filled:hover {
+  background: #1c3b57;
+  border-color: var(--orange);
+  box-shadow: 0 10px 24px rgba(6,29,55,.28);
+  transform: translateY(-2px);
+}
+
+.chief-vessel-card { border: 2px solid #d4d4d4; transition: border-color .15s ease, box-shadow .15s ease; }
+.chief-vessel-card:hover { border-color: #91a7b9; }
+.chief-vessel-card.chief-vessel-card-active { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange); }
+
+input[type="range"] { accent-color: var(--orange); }

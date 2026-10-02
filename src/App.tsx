@@ -18,23 +18,24 @@ import { ContractsPage } from './pages/contracts/ContractsPage'
 import { MarketingDashboardPage } from './pages/dashboard/MarketingDashboardPage'
 import { TechnicalDashboardPage } from './pages/technical/TechnicalDashboardPage'
 import { TechnicalPlaceholderPage } from './pages/technical/TechnicalPlaceholderPage'
+import { ChiefEngineerLayout } from './pages/chief-engineer/ChiefEngineerLayout'
+import { ChiefEngineerHomePage } from './pages/chief-engineer/ChiefEngineerHomePage'
+import { ChiefEngineerMonitoringPage } from './pages/chief-engineer/ChiefEngineerMonitoringPage'
+import { ChiefEngineerPmsPage } from './pages/chief-engineer/ChiefEngineerPmsPage'
 import type { Department } from './types'
 
 function getDepartmentFromPath(pathname: string): Department {
+  if (pathname.startsWith('/chief-engineer')) return 'chief-engineer'
   if (pathname.startsWith('/technical')) return 'technical'
   return 'marketing'
 }
 
 export default function App() {
   const location = useLocation()
-  const [department, setDepartment] = useState<Department>(() => getDepartmentFromPath(location.pathname))
+  const department = getDepartmentFromPath(location.pathname)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('sedar-marketing-sidebar-collapsed') !== 'true')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [toast, setToast] = useState('')
-
-  useEffect(() => {
-    setDepartment(getDepartmentFromPath(location.pathname))
-  }, [location.pathname])
 
   useEffect(() => {
     if (!toast) return
@@ -62,8 +63,7 @@ export default function App() {
 
   const notify = useCallback((message: string) => setToast(message), [])
 
-  const handleDepartmentChange = useCallback((dept: Department) => {
-    setDepartment(dept)
+  const handleDepartmentChange = useCallback(() => {
     setDesktopSidebarOpen(true)
     setMobileSidebarOpen(false)
   }, [])
@@ -102,6 +102,11 @@ export default function App() {
         <Route path="/technical/dry-dock" element={<TechnicalPlaceholderPage title="Dry Dock Planning" description="Plan and manage dry dock schedules, scopes, and vessel availability windows." />} />
         <Route path="/technical/spare-parts" element={<TechnicalPlaceholderPage title="Spare Parts" description="Track spare parts inventory, reorder levels, and procurement status for vessel equipment." />} />
         <Route path="/technical/reports" element={<TechnicalPlaceholderPage title="Maintenance Reports" description="View maintenance performance reports, fleet status summaries, and compliance metrics." />} />
+        <Route path="/chief-engineer" element={<ChiefEngineerLayout onNotify={notify} />}>
+          <Route index element={<ChiefEngineerHomePage />} />
+          <Route path="monitoring" element={<ChiefEngineerMonitoringPage />} />
+          <Route path="pms" element={<ChiefEngineerPmsPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
       </Routes>
       {toast && <Toast message={toast} onClose={() => setToast('')} />}

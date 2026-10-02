@@ -7,6 +7,7 @@ import {
   Clock3,
   FileText,
   FileSignature,
+  Gauge,
   LayoutDashboard,
   Package,
   ReceiptText,
@@ -20,6 +21,7 @@ import type { DepartmentConfig, Metric, NavigationGroup } from '../types'
 export const departments: DepartmentConfig[] = [
   { id: 'marketing', label: 'Marketing', sublabel: 'Marketing ERP', routePrefix: '/marketing', defaultPath: '/marketing/dashboard' },
   { id: 'technical', label: 'Technical', sublabel: 'Technical & Maintenance', routePrefix: '/technical', defaultPath: '/technical/dashboard' },
+  { id: 'chief-engineer', label: 'Chief Engineer', sublabel: 'Engine Room Console', routePrefix: '/chief-engineer', defaultPath: '/chief-engineer' },
 ]
 
 export const marketingNavigationGroups: NavigationGroup[] = [
@@ -96,6 +98,22 @@ export const technicalNavigationGroups: NavigationGroup[] = [
     label: 'Reports',
     items: [
       { label: 'Maintenance Reports', path: '/technical/reports', icon: BarChart3 },
+    ],
+  },
+]
+
+export const chiefEngineerNavigationGroups: NavigationGroup[] = [
+  {
+    label: 'Overview',
+    items: [
+      { label: 'Dashboard', path: '/chief-engineer', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { label: 'Daily Engine Log', path: '/chief-engineer/monitoring', icon: Gauge },
+      { label: 'PMS Checklist', path: '/chief-engineer/pms', icon: ClipboardCheck },
     ],
   },
 ]
