@@ -1659,9 +1659,12 @@ td { border-top: 1px solid #e2e2e2; }
 .tech-dashboard-header { min-height: 76px; padding: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .tech-header-text { min-width: 0; }
 .tech-header-kicker { display: block; margin-bottom: 4px; color: #e36b4b; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.tech-dashboard-header h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2; }
+.tech-dashboard-header h1 { margin: 0; font-size: 32px; font-weight: 700; line-height: 1.2; }
 .tech-header-text p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .tech-header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.tech-dashboard-header.tech-header-centered { align-items: center; }
+.tech-header-centered .tech-header-actions { gap: 12px; }
+@media(max-width:900px){.tech-dashboard-header.tech-header-centered{align-items:flex-start}}
 
 .tech-summary-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .tech-summary-card { min-height: 120px; padding: 16px 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
@@ -1695,7 +1698,7 @@ td { border-top: 1px solid #e2e2e2; }
 .tech-priority-medium { color: #1e6e9e; background: #d6eaf8; }
 .tech-priority-low { color: #4a7a5b; background: #e8f5ec; }
 
-.tech-status-badge { width: fit-content; padding: 3px 8px; display: inline-flex; border-radius: 10px; font-size: 9px; font-weight: 700; }
+.tech-status-badge { width: fit-content; padding: 3px 8px; display: inline-flex; border-radius: 10px; font-size: 11px; font-weight: 700; }
 .tech-status-due-soon { color: #9a3020; background: #fce8e4; }
 .tech-status-scheduled { color: #174f88; background: #dceafb; }
 .tech-status-completed { color: #116437; background: #d9f1e3; }

@@ -82,7 +82,7 @@ export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, on
                 <ul className="nav-list">
                   {group.items.map(({ label, path, icon: Icon }) => (
                     <li key={path}>
-                      <NavLink to={path} end={path === `/${department}/dashboard` || path === '/chief-engineer'} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
+                      <NavLink to={path} end={path === `/${department}/dashboard` || path.startsWith('/chief-engineer')} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
                         <Icon aria-hidden="true" size={16} />
                         <span>{label}</span>
                       </NavLink>

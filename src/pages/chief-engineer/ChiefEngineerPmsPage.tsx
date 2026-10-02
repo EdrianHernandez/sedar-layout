@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { PMSTaskManager } from '../../components/chief-engineer/PMSTaskManager'
+import { consoleTitle } from '../../data/chiefEngineerMockData'
 import { useChiefEngineer } from './chiefEngineerOutlet'
 
 export function ChiefEngineerPmsPage() {
@@ -10,7 +11,7 @@ export function ChiefEngineerPmsPage() {
     <>
       <div className="tech-dashboard-header">
         <div className="tech-header-text">
-          <span className="tech-header-kicker">Chief Engineer Console · Planned Maintenance</span>
+          <span className="tech-header-kicker">{consoleTitle} · Planned Maintenance</span>
           <h1>PMS Checklist</h1>
           <p>{activeVessel.name} · Complete interval tasks and report defects.</p>
         </div>

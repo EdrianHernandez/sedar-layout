@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Clock3,
+  Cog,
   FileText,
   FileSignature,
   Gauge,
@@ -15,6 +16,8 @@ import {
   History,
   Anchor,
   CalendarCheck,
+  Settings2,
+  Zap,
 } from 'lucide-react'
 import type { DepartmentConfig, Metric, NavigationGroup } from '../types'
 
@@ -110,10 +113,19 @@ export const chiefEngineerNavigationGroups: NavigationGroup[] = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'Active Operations',
     items: [
       { label: 'Daily Engine Log', path: '/chief-engineer/monitoring', icon: Gauge },
-      { label: 'PMS Checklist', path: '/chief-engineer/pms', icon: ClipboardCheck },
+      { label: 'PMS Checklists', path: '/chief-engineer/pms', icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: 'History & Records',
+    items: [
+      { label: 'Daily Logs History', path: '/chief-engineer/monitoring/history', icon: History },
+      { label: 'PMS History: Main Engine', path: '/chief-engineer/pms/history/main-engine', icon: Cog },
+      { label: 'PMS History: Transmission', path: '/chief-engineer/pms/history/transmission', icon: Settings2 },
+      { label: 'PMS History: Generator', path: '/chief-engineer/pms/history/generator', icon: Zap },
     ],
   },
 ]

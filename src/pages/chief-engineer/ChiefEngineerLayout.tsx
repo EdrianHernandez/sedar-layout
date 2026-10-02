@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import { SubmitActionFAB } from '../../components/chief-engineer/SubmitActionFAB'
 import {
   assignedVessels,
+  consoleTitle,
   createInitialEngineLogs,
   createInitialPmsChecklists,
   defaultVesselId,
@@ -69,16 +69,13 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     }))
   }, [activeVesselId])
 
-  const handleSubmitted = useCallback(() => {
-    onNotify('Engine logs and PMS checklist submitted to HQ successfully.')
-  }, [onNotify])
-
   const outletContext: ChiefEngineerOutletContext = {
     vessels: assignedVessels,
     activeVesselId,
     activeVessel,
     selectVessel,
     now,
+    notify: onNotify,
     logs,
     checklists,
     updateLog,
@@ -86,29 +83,29 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     saveRemark,
   }
 
-  const onHome = location.pathname.replace(/\/+$/, '') === '/chief-engineer'
+  const path = location.pathname.replace(/\/+$/, '')
+  const onHome = path === '/chief-engineer'
   const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
   const timeLabel = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 
   return (
-    <main className={`technical-dashboard ${onHome ? '' : 'pb-24'}`}>
-      <header className="tech-dashboard-header">
-        <div className="tech-header-text">
-          <span className="tech-header-kicker">Chief Engineer Console</span>
-          <h1>{activeVessel.name}</h1>
-          <p>{activeVessel.imo} · Engine Room Watch Log</p>
-        </div>
-        <div className="tech-header-actions">
-          <div className="rounded-md border border-[#d4d4d4] bg-white px-4 py-2 text-right">
-            <span className="block text-[11px] font-bold uppercase tracking-[.14em] text-[#5f6873]">{dateLabel}</span>
-            <strong className="block text-base font-bold tabular-nums leading-tight text-[#111820]">{timeLabel}</strong>
+    <main className="technical-dashboard">
+      {onHome && (
+        <header className="tech-dashboard-header">
+          <div className="tech-header-text">
+            <span className="tech-header-kicker">{consoleTitle}</span>
+            <h1>{activeVessel.name}</h1>
           </div>
-        </div>
-      </header>
+          <div className="tech-header-actions">
+            <div className="text-right">
+              <span className="block text-[11px] font-bold uppercase tracking-[.14em] text-[#5f6873]">{dateLabel}</span>
+              <strong className="block text-3xl font-bold tabular-nums leading-tight text-[#152f48]">{timeLabel}</strong>
+            </div>
+          </div>
+        </header>
+      )}
 
       <Outlet context={outletContext} />
-
-      {!onHome && <SubmitActionFAB onSubmitted={handleSubmitted} />}
     </main>
   )
 }

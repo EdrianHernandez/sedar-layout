@@ -9,6 +9,7 @@ export interface ChiefEngineerOutletContext {
   activeVessel: Vessel
   selectVessel: (vesselId: string) => void
   now: Date
+  notify: (message: string) => void
   logs: EngineLog[]
   checklists: PMSChecklist[]
   updateLog: (log: EngineLog) => void

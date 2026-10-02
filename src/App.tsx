@@ -22,6 +22,8 @@ import { ChiefEngineerLayout } from './pages/chief-engineer/ChiefEngineerLayout'
 import { ChiefEngineerHomePage } from './pages/chief-engineer/ChiefEngineerHomePage'
 import { ChiefEngineerMonitoringPage } from './pages/chief-engineer/ChiefEngineerMonitoringPage'
 import { ChiefEngineerPmsPage } from './pages/chief-engineer/ChiefEngineerPmsPage'
+import { DailyEngineLogHistory } from './pages/chief-engineer/DailyEngineLogHistory'
+import { ChiefEngineerPmsHistoryPage } from './pages/chief-engineer/ChiefEngineerPmsHistoryPage'
 import type { Department } from './types'
 
 function getDepartmentFromPath(pathname: string): Department {
@@ -105,7 +107,11 @@ export default function App() {
         <Route path="/chief-engineer" element={<ChiefEngineerLayout onNotify={notify} />}>
           <Route index element={<ChiefEngineerHomePage />} />
           <Route path="monitoring" element={<ChiefEngineerMonitoringPage />} />
+          <Route path="monitoring/history" element={<DailyEngineLogHistory />} />
           <Route path="pms" element={<ChiefEngineerPmsPage />} />
+          <Route path="pms/history/main-engine" element={<ChiefEngineerPmsHistoryPage scope="Main Engine" />} />
+          <Route path="pms/history/transmission" element={<ChiefEngineerPmsHistoryPage scope="Transmission" />} />
+          <Route path="pms/history/generator" element={<ChiefEngineerPmsHistoryPage scope="Generator" />} />
         </Route>
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
       </Routes>

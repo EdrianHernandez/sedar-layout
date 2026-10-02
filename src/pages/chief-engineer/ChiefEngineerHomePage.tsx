@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, ClipboardCheck, Clock3, Fuel, Gauge, Wrench } from 'lucide-react'
+import { RecentWatchLogsCard } from '../../components/chief-engineer/RecentWatchLogsCard'
+import { recentWatchLogs } from '../../data/chiefEngineerMockData'
 import { useChiefEngineer } from './chiefEngineerOutlet'
 import { computeRunningHours, formatRunningHours } from '../../utils/engineLog'
 
@@ -72,6 +74,8 @@ export function ChiefEngineerHomePage() {
           </span>
         </Link>
       </div>
+
+      <RecentWatchLogsCard logs={recentWatchLogs} />
     </>
   )
 }
