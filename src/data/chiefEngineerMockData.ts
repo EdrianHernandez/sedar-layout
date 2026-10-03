@@ -71,13 +71,14 @@ interface LogSeed {
   fuelRobStop: number
   meterPrevious: number
   meterCurrent: number
+  lastOverhaulMeter: number
 }
 
 const engineLogSeeds: LogSeed[] = [
-  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(6, 0), timeStop: null, rpm: 720, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 18450, fuelRobStop: 18150, meterPrevious: 14500.0, meterCurrent: 14504.2 },
-  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(6, 0), timeStop: null, rpm: 715, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 18320, fuelRobStop: 18065, meterPrevious: 14462.5, meterCurrent: 14466.7 },
-  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(5, 30), timeStop: todayAt(11, 45), rpm: 1500, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 4200, fuelRobStop: 3980, meterPrevious: 6420.0, meterCurrent: 6422.6 },
-  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 4150, fuelRobStop: 4150, meterPrevious: 5110.3, meterCurrent: 5110.3 },
+  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(6, 0), timeStop: null, rpm: 720, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 18450, fuelRobStop: 18150, meterPrevious: 14500.0, meterCurrent: 14504.2, lastOverhaulMeter: 14100 },
+  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(6, 0), timeStop: null, rpm: 715, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 18320, fuelRobStop: 18065, meterPrevious: 14462.5, meterCurrent: 14466.7, lastOverhaulMeter: 14200 },
+  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(5, 30), timeStop: todayAt(11, 45), rpm: 1500, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 4200, fuelRobStop: 3980, meterPrevious: 6420.0, meterCurrent: 6422.6, lastOverhaulMeter: 6000 },
+  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 4150, fuelRobStop: 4150, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
 ]
 
 export function createInitialEngineLogs(vessel: Vessel): EngineLog[] {

@@ -1,6 +1,7 @@
 import { Minus, Plus, Fuel, Clock, Activity } from 'lucide-react'
 import type { EngineLog } from '../../types/engineLog'
-import { ENGINE_TABS } from '../../data/chiefEngineerMockData'
+import type { PMSInterval } from '../../types/pmsChecklist'
+import { ENGINE_TABS, PMS_INTERVALS } from '../../data/chiefEngineerMockData'
 
 interface DailyEngineMonitorCardProps {
   log: EngineLog
@@ -79,6 +80,12 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
   const consumption = Math.max(0, log.fuelRobStart - log.fuelRobStop)
   const watchHours = Math.max(0, roundTo(log.meterCurrent - log.meterPrevious, 1))
 
+  const sinceOverhaul = Math.max(0, roundTo(log.meterCurrent - log.lastOverhaulMeter, 1))
+  const nextInterval: PMSInterval = PMS_INTERVALS.find((interval) => Number(interval.replace('H', '')) > sinceOverhaul) ?? '6000H'
+  const intervalHours = Number(nextInterval.replace('H', ''))
+  const pmsRemaining = Math.max(0, roundTo(intervalHours - sinceOverhaul, 1))
+  const pmsProgress = clamp((sinceOverhaul / intervalHours) * 100, 0, 100)
+
   const bumpMeter = (direction: 1 | -1) => {
     onUpdate({ ...log, meterCurrent: roundTo(clamp(log.meterCurrent + 0.1 * direction, 0, 999999), 1) })
   }
@@ -133,7 +140,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
             </span>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
@@ -142,12 +149,11 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                 </span>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
               </div>
-              <span className="mt-2 text-center text-[10px] text-[#7c8994]">From previous watch</span>
             </div>
 
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
-              <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="mt-3 flex flex-1 flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <button
                   type="button"
                   aria-label="Decrease current meter reading"
@@ -188,6 +194,30 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums leading-none">{watchHours.toFixed(1)}</strong>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-green-700/70">HRS</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-900">
+              <span className="text-[10px] font-bold uppercase tracking-[.08em]">Next PMS: {nextInterval} Routine</span>
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-blue-200 bg-white/60 px-1 py-1">
+                <strong className="text-3xl font-black tabular-nums leading-none">{pmsRemaining.toFixed(1)}</strong>
+                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-700/70">Hrs Remaining</span>
+              </div>
+              <span className="mt-2 text-center text-[10px] text-blue-800/80">
+                Current Interval: {sinceOverhaul.toFixed(1)} / {intervalHours.toFixed(1)} Hrs
+              </span>
+              <div
+                role="progressbar"
+                aria-label={`${nextInterval} routine progress`}
+                aria-valuenow={Math.round(pmsProgress)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-blue-100"
+              >
+                <div
+                  className="h-full rounded-full bg-blue-500 transition-[width] duration-300"
+                  style={{ width: `${pmsProgress}%` }}
+                />
               </div>
             </div>
           </div>

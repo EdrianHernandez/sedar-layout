@@ -17,6 +17,7 @@ export interface EngineLog {
   fuelRobStop: number
   meterPrevious: number
   meterCurrent: number
+  lastOverhaulMeter: number
 }
 
 export type WatchLogStatus = 'verified' | 'pending'
