@@ -34,40 +34,41 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onCha
   return (
     <div className="rounded-lg border border-[#d4d4d4] bg-white p-3">
       <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">{label}</span>
-      <div className="mt-3 flex items-stretch gap-2">
+      <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={() => bump(-1)}
-          className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
         >
-          <Minus size={22} strokeWidth={3} />
+          <Minus size={24} strokeWidth={3} />
         </button>
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1">
-          <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
-            {decimals > 0 ? value.toFixed(decimals) : value}
-          </span>
+        <div className="flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200 p-3 focus-within:border-[#4b718f]">
+          <input
+            type="number"
+            inputMode="decimal"
+            aria-label={label}
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(event) => {
+              const next = Number(event.target.value)
+              onChange(Number.isFinite(next) && next >= 0 ? next : 0)
+            }}
+            className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+          />
           <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">{unit}</span>
         </div>
         <button
           type="button"
           aria-label={`Increase ${label}`}
           onClick={() => bump(1)}
-          className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
         >
-          <Plus size={22} strokeWidth={3} />
+          <Plus size={24} strokeWidth={3} />
         </button>
       </div>
-      <input
-        type="range"
-        aria-label={`${label} slider`}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(roundTo(clamp(Number(event.target.value), min, max), decimals))}
-        className="mt-3 h-9 w-full cursor-pointer"
-      />
     </div>
   )
 }
@@ -135,7 +136,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
                 <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
                   {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
@@ -146,16 +147,16 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
 
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
-              <div className="mt-3 flex items-stretch gap-2">
+              <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <button
                   type="button"
                   aria-label="Decrease current meter reading"
                   onClick={() => bumpMeter(-1)}
-                  className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
                 >
-                  <Minus size={22} strokeWidth={3} />
+                  <Minus size={24} strokeWidth={3} />
                 </button>
-                <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1 focus-within:border-[#4b718f]">
+                <div className="flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200 p-3 focus-within:border-[#4b718f]">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -167,7 +168,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                       const next = Number(event.target.value)
                       onUpdate({ ...log, meterCurrent: Number.isFinite(next) && next >= 0 ? next : 0 })
                     }}
-                    className="w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
                   />
                   <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
                 </div>
@@ -175,16 +176,16 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                   type="button"
                   aria-label="Increase current meter reading"
                   onClick={() => bumpMeter(1)}
-                  className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
                 >
-                  <Plus size={22} strokeWidth={3} />
+                  <Plus size={24} strokeWidth={3} />
                 </button>
               </div>
             </div>
 
             <div className="flex flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
               <span className="text-[10px] font-bold uppercase tracking-[.08em]">Hours for this Watch</span>
-              <div className="mt-3 flex min-h-14 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums leading-none">{watchHours.toFixed(1)}</strong>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-green-700/70">HRS</span>
               </div>
@@ -201,7 +202,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">ROB Start (L)</span>
-              <div className="mt-3 flex min-h-14 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1 focus-within:border-[#4b718f]">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-lg border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1 focus-within:border-[#4b718f]">
                 <input
                   type="number"
                   inputMode="numeric"
@@ -213,7 +214,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                     const next = Number(event.target.value)
                     onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
                   }}
-                  className="w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+                  className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
                 />
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
               </div>
@@ -221,16 +222,16 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
 
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">ROB Stop (L)</span>
-              <div className="mt-3 flex items-stretch gap-2">
+              <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <button
                   type="button"
                   aria-label="Decrease ROB stop"
                   onClick={() => bumpRobStop(-1)}
-                  className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
                 >
-                  <Minus size={22} strokeWidth={3} />
+                  <Minus size={24} strokeWidth={3} />
                 </button>
-                <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1 focus-within:border-[#4b718f]">
+                <div className="flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200 p-3 focus-within:border-[#4b718f]">
                   <input
                     type="number"
                     inputMode="numeric"
@@ -242,7 +243,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                       const next = Number(event.target.value)
                       onUpdate({ ...log, fuelRobStop: Number.isFinite(next) && next >= 0 ? next : 0 })
                     }}
-                    className="w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
                   />
                   <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
                 </div>
@@ -250,16 +251,16 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                   type="button"
                   aria-label="Increase ROB stop"
                   onClick={() => bumpRobStop(1)}
-                  className="grid size-14 shrink-0 place-items-center rounded-md border border-[#cdd3d8] bg-white text-[#283746] transition hover:bg-[#f4f6f7] active:bg-[#eceff1]"
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
                 >
-                  <Plus size={22} strokeWidth={3} />
+                  <Plus size={24} strokeWidth={3} />
                 </button>
               </div>
             </div>
 
             <div className="flex flex-col rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
               <span className="text-[10px] font-bold uppercase tracking-[.08em]">Fuel Consumed</span>
-              <div className="mt-3 flex min-h-14 flex-col items-center justify-center rounded-md border border-amber-200 bg-white/60 px-1 py-1">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-amber-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums">{consumption.toLocaleString()}</strong>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-700/70">L</span>
               </div>
