@@ -150,13 +150,13 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
   const activeStatusOption = STATUS_OPTIONS.find((option) => option.id === activeStatus) ?? STATUS_OPTIONS[0]
   const isNoOperation = activeStatus === 'no-operation'
 
-  // Strict auto-calculation: hours run this watch come purely from WATCH START → WATCH STOP.
+  // Strict auto-calculation: hours run this watch come purely from START TIME → STOP TIME.
   // 0 while NO OPERATION · null while the times are incomplete · otherwise decimal hours (overnight included).
   const watchDelta = activeStatus === 'no-operation' ? 0 : computeWatchDurationHours(watchStart, watchStop)
   // Current Meter = Previous + delta; null until both times exist, so the field falls back to the previous reading.
   const derivedMeter = watchDelta === null ? null : roundTo(log.meterPrevious + watchDelta, 1)
   const displayMeter = derivedMeter ?? log.meterPrevious
-  // Derived from the rounded meter so "Hours for this Watch" and the meter card can never disagree.
+  // Derived from the rounded meter so "TOTAL RUNNING HOURS" and the meter card can never disagree.
   const watchHours = derivedMeter === null ? 0 : roundTo(derivedMeter - log.meterPrevious, 1)
 
   const sinceOverhaul = Math.max(0, roundTo(displayMeter - log.lastOverhaulMeter, 1))
@@ -258,7 +258,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
         <div>
           <span className="mb-4 flex items-center gap-2">
             <Clock size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Watch Timeline</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Running Hours Log</span>
           </span>
 
           <div className="flex flex-wrap items-end gap-4">
@@ -287,10 +287,10 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
             </label>
 
             <label className="grid gap-1">
-              <span className={ROW_LABEL_CLS}>Watch Start Time</span>
+              <span className={ROW_LABEL_CLS}>Start Time</span>
               <input
                 type="time"
-                aria-label="Watch start time"
+                aria-label="Start time"
                 value={watchStart}
                 disabled={readOnly}
                 onChange={(event) => setWatchStart(event.target.value)}
@@ -298,10 +298,10 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
               />
             </label>
             <label className="grid gap-1">
-              <span className={ROW_LABEL_CLS}>Watch Stop Time (Cut-off)</span>
+              <span className={ROW_LABEL_CLS}>Stop Time (Cut-off)</span>
               <input
                 type="time"
-                aria-label="Watch stop time"
+                aria-label="Stop time (cut-off)"
                 value={watchStop}
                 disabled={readOnly || isNoOperation}
                 onChange={(event) => setWatchStop(event.target.value)}
@@ -332,7 +332,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
                   inputMode="decimal"
                   readOnly
                   tabIndex={-1}
-                  aria-label="Current meter reading (auto-computed from watch times)"
+                  aria-label="Current meter reading (auto-computed from start and stop times)"
                   value={displayMeter.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   className="no-number-spinner w-full cursor-not-allowed bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none focus:outline-none"
                 />
@@ -341,7 +341,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
             </div>
 
             <div className="flex h-full flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em]">Hours for this Watch</span>
+              <span className="text-[10px] font-bold uppercase tracking-[.08em]">Total Running Hours</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums leading-none">{watchHours.toFixed(1)}</strong>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-green-700/70">HRS</span>

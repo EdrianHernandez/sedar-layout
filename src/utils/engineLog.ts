@@ -40,8 +40,10 @@ export function currentClockTime(date: Date = new Date()): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-// Exact times entered by the user, regardless of each engine's OPERATED / NO OPERATION badge.
-// While the log is still being filled (no cut-off yet) it reads "06:00 – ongoing".
-export function formatWatchWindow(watchStart: string, watchStop: string): string {
-  return watchStop ? `${watchStart || '—'} – ${watchStop}` : `${watchStart || '—'} – ongoing`
+// Local HH:MM for a stored ISO timestamp (e.g. "14:00"); missing/invalid → fallback.
+export function formatTimeOnly(iso: string | null, fallback = '—'): string {
+  if (!iso) return fallback
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return fallback
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
 }

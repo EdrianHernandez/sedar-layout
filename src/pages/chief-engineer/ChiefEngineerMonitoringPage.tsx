@@ -6,7 +6,6 @@ import { consoleTitle } from '../../data/chiefEngineerMockData'
 import { useEngineRoom, type EngineRole } from '../../context/engineRoomStore'
 import type { EngineId, WatchLogReviewStatus } from '../../types/engineLog'
 import { useChiefEngineer } from './chiefEngineerOutlet'
-import { formatWatchWindow } from '../../utils/engineLog'
 
 interface ChiefEngineerMonitoringPageProps {
   currentRole: EngineRole
@@ -20,7 +19,7 @@ const DISABLED_CLS = 'disabled:cursor-not-allowed disabled:opacity-60'
 
 export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onReviewStatusChange }: ChiefEngineerMonitoringPageProps) {
   const { activeVessel, logs, updateLog, notify, now } = useChiefEngineer()
-  const { watchStart, watchStop } = useEngineRoom()
+  const { watchStop } = useEngineRoom()
   const [engineId, setEngineId] = useState<EngineId>('ME-PORT')
   const [isWorking, setIsWorking] = useState(false)
   const [stopError, setStopError] = useState(false)
@@ -28,7 +27,6 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
   const timersRef = useRef<number[]>([])
   const log = logs.find((item) => item.engineId === engineId) ?? logs[0]
   const dateLabel = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  const windowLabel = formatWatchWindow(watchStart, watchStop)
 
   useEffect(() => {
     const timers = timersRef.current
@@ -50,11 +48,11 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
   }
 
   // Validation gate: an open-ended log cannot enter Review mode — WATCH STOP (cut-off) is mandatory.
-  // TODO (cross-check): flag when (watchStop − watchStart) does not roughly match "Hours for this Watch".
+  // TODO (cross-check): flag when (watchStop − watchStart) does not roughly match "Total Running Hours".
   const handleReview = () => {
     if (!watchStop) {
       setStopError(true)
-      notify('Watch stop (cut-off) time is required before opening the review.')
+      notify('Stop (cut-off) time is required before opening the review.')
       return
     }
     setStopError(false)
@@ -65,7 +63,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
     if (!watchStop) {
       setStopError(true)
       setViewMode('edit')
-      notify('Watch stop (cut-off) time is required before submitting the log.')
+      notify('Stop (cut-off) time is required before submitting the log.')
       return
     }
     runAction('pending', 'Watch log submitted to Chief Engineer for approval.', () => setViewMode('edit'))
@@ -190,9 +188,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           <p>
             {isReviewing ? (
               <>
-                {activeVessel.name} · {dateLabel} · Watch window:{' '}
-                <strong className="font-bold text-slate-700">{windowLabel}</strong> · Verify all entries for typos before final
-                submission.
+                {activeVessel.name} · {dateLabel} · Verify all entries for typos before final submission.
               </>
             ) : (
               <>
@@ -207,7 +203,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
       </div>
 
       {isReviewing ? (
-        <DailyLogSummary logs={logs} watchStart={watchStart} watchStop={watchStop} />
+        <DailyLogSummary logs={logs} />
       ) : (
         <DailyEngineMonitorCard log={log} onEngineChange={setEngineId} onUpdate={updateLog} readOnly={isReadOnly} stopError={stopError} />
       )}
