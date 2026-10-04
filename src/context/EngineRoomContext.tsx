@@ -24,6 +24,10 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
   const [reviewStatus, setReviewStatus] = useState<WatchLogReviewStatus>('draft')
   const [watchStart, setWatchStart] = useState(currentClockTime)
   const [watchStop, setWatchStop] = useState('')
+  // Vessel-level hydraulic oil (steering gear & winch), tracked per vessel like the engine logs.
+  const [hydraulicOilByVessel, setHydraulicOilByVessel] = useState<Record<string, number>>(() =>
+    Object.fromEntries(assignedVessels.map((vessel) => [vessel.id, 0])),
+  )
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -36,6 +40,11 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
   const activeVessel = assignedVessels.find((vessel) => vessel.id === activeVesselId) ?? assignedVessels[0]
 
   const selectVessel = useCallback((vesselId: string) => setActiveVesselId(vesselId), [])
+
+  const setHydraulicOilAdded = useCallback(
+    (value: number) => setHydraulicOilByVessel((current) => ({ ...current, [activeVesselId]: value })),
+    [activeVesselId],
+  )
 
   const updateLog = useCallback((updated: EngineLog) => {
     setLogsByVessel((current) => ({
@@ -79,6 +88,8 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
       watchStop,
       setWatchStart,
       setWatchStop,
+      hydraulicOilAdded: hydraulicOilByVessel[activeVesselId] ?? 0,
+      setHydraulicOilAdded,
       vessels: assignedVessels,
       activeVesselId,
       activeVessel,
@@ -90,7 +101,7 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
       toggleTask,
       saveRemark,
     }
-  }, [currentRole, reviewStatus, watchStart, watchStop, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, toggleTask, saveRemark])
+  }, [currentRole, reviewStatus, watchStart, watchStop, hydraulicOilByVessel, setHydraulicOilAdded, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, toggleTask, saveRemark])
 
   return <EngineRoomContext.Provider value={value}>{children}</EngineRoomContext.Provider>
 }

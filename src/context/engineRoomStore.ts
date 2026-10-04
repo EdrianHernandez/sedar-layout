@@ -13,6 +13,8 @@ export interface EngineRoomContextValue {
   watchStop: string
   setWatchStart: (value: string) => void
   setWatchStop: (value: string) => void
+  hydraulicOilAdded: number
+  setHydraulicOilAdded: (value: number) => void
   vessels: Vessel[]
   activeVesselId: string
   activeVessel: Vessel

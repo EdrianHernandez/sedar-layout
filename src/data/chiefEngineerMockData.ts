@@ -12,10 +12,13 @@ export const defaultVesselId = assignedVessels[0].id
 
 export const consoleTitle = 'Engine Room Console'
 
+// Engine tabs plus the vessel-level fluids tab (not tied to any single engine).
+export type MonitorTabId = EngineId | 'VESSEL-FLUIDS'
+
 interface EngineTab {
-  id: EngineId
+  id: MonitorTabId
   label: string
-  className: 'main' | 'auxiliary'
+  className: 'main' | 'auxiliary' | 'vessel'
 }
 
 export const ENGINE_TABS: EngineTab[] = [
@@ -23,6 +26,7 @@ export const ENGINE_TABS: EngineTab[] = [
   { id: 'ME-STBD', label: 'M/E STBD', className: 'main' },
   { id: 'AUX-1', label: 'GEN 1', className: 'auxiliary' },
   { id: 'AUX-2', label: 'GEN 2', className: 'auxiliary' },
+  { id: 'VESSEL-FLUIDS', label: 'VESSEL FLUIDS', className: 'vessel' },
 ]
 
 export const PMS_INTERVALS: PMSInterval[] = ['250H', '500H', '1000H', '6000H']
@@ -78,12 +82,28 @@ interface LogSeed {
 
 // Distinct per-engine windows demonstrate that TIME START / TIME STOP are independent per row
 // (not one global watch window); GEN 2 stays standby (null / null → "—" cells).
+// R.O.B. figures reflect the Service Tank (Day Tank) feeding each engine — the Daily Engine
+// Monitoring form tracks day-tank refills, not master/bunker storage (that lives in the
+// masterRobByVessel ledger below).
 const engineLogSeeds: LogSeed[] = [
-  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(14, 0), timeStop: todayAt(15, 0), rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 18450, fuelRobStop: 18450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
-  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(15, 0), timeStop: todayAt(16, 30), rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 18320, fuelRobStop: 18320, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
-  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(8, 0), timeStop: todayAt(16, 0), rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 4200, fuelRobStop: 4200, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
-  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 4150, fuelRobStop: 4150, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
+  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(14, 0), timeStop: todayAt(15, 0), rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 750, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
+  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(15, 0), timeStop: todayAt(16, 30), rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 700, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
+  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(8, 0), timeStop: todayAt(16, 0), rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 410, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
+  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
 ]
+
+// Master (vessel-wide) fluid inventory at the start of the watch — the physical report's
+// bottom-left R.O.B. box. The summary deducts the refills recorded per engine during the watch.
+export interface MasterRob {
+  fuelOil: number
+  lubeOil: number
+  hydraulicOil: number
+  freshWater: number
+}
+
+export const masterRobByVessel: Record<string, MasterRob> = Object.fromEntries(
+  assignedVessels.map((vessel) => [vessel.id, { fuelOil: 5000, lubeOil: 1500, hydraulicOil: 400, freshWater: 2000 }]),
+)
 
 export function createInitialEngineLogs(vessel: Vessel): EngineLog[] {
   const date = today()

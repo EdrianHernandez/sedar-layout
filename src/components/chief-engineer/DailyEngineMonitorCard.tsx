@@ -3,12 +3,13 @@ import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown, Droplet
 import { useEngineRoom } from '../../context/engineRoomStore'
 import type { EngineLog } from '../../types/engineLog'
 import type { PMSInterval } from '../../types/pmsChecklist'
-import { ENGINE_TABS, PMS_INTERVALS } from '../../data/chiefEngineerMockData'
+import { ENGINE_TABS, PMS_INTERVALS, type MonitorTabId } from '../../data/chiefEngineerMockData'
 import { computeWatchDurationHours, currentClockTime } from '../../utils/engineLog'
 
 interface DailyEngineMonitorCardProps {
   log: EngineLog
-  onEngineChange: (engineId: EngineLog['engineId']) => void
+  activeTab: MonitorTabId
+  onTabChange: (tab: MonitorTabId) => void
   onUpdate: (log: EngineLog) => void
   readOnly?: boolean
   stopError?: boolean
@@ -140,8 +141,9 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disab
   )
 }
 
-export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly = false, stopError = false }: DailyEngineMonitorCardProps) {
-  const { watchStart, watchStop, setWatchStart, setWatchStop } = useEngineRoom()
+export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, readOnly = false, stopError = false }: DailyEngineMonitorCardProps) {
+  const { watchStart, watchStop, setWatchStart, setWatchStop, hydraulicOilAdded, setHydraulicOilAdded } = useEngineRoom()
+  const isVesselTab = activeTab === 'VESSEL-FLUIDS'
   const isRunning = Boolean(log.timeStart) && !log.timeStop
   const hasStarted = Boolean(log.timeStart)
   const consumption = Math.max(0, log.fuelRobStart - log.fuelRobStop)
@@ -180,8 +182,10 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
       if (next === activeStatus) return
       const stamp = new Date().toISOString()
       if (next === 'no-operation') {
-        // NO OPERATION enforces zero consumption: ROB stop = ROB start, rpm 0. The meter follows
-        // automatically through the reconciliation effect below (delta 0 ⇒ meter = previous).
+        // Explicitly switching to NO OPERATION zeroes consumption once: R.O.B. stop = start,
+        // rpm 0. The meter follows automatically through the reconciliation effect below
+        // (delta 0 ⇒ meter = previous). No auto-sync afterwards, so seeded/recorded stop < start
+        // values survive — only a fresh status selection resets them.
         // The watch window resets to the current wall-clock time with STOP pinned to START, so the
         // duration is 0 by construction — both stay editable, see the keep-stop-matched effect.
         const clock = currentClockTime()
@@ -201,8 +205,10 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
     [activeStatus, log, onUpdate, setWatchStart, setWatchStop],
   )
 
-  // Single owner of the auto-derived fields: mirror the computed meter (keeps the Review table and the
-  // PMS card in agreement) and, under NO OPERATION, keep ROB STOP = ROB START so Fuel Consumed reads 0.
+  // Single owner of the auto-derived fields: mirror the computed meter so the Review table and
+  // the PMS card stay in agreement. R.O.B. stop is NOT reconciled here — it is reset to start
+  // only when the user explicitly picks NO OPERATION in selectStatus, so recorded service-tank
+  // consumption (stop < start) persists for normal and seeded logs.
   // One effect (not two) so two onUpdate calls can never clobber each other's {...log} snapshot.
   // Equality guards make it loop-free; review mode never writes.
   useEffect(() => {
@@ -213,12 +219,8 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
       next.meterCurrent = derivedMeter
       changed = true
     }
-    if (isNoOperation && log.fuelRobStop !== log.fuelRobStart) {
-      next.fuelRobStop = log.fuelRobStart
-      changed = true
-    }
     if (changed) onUpdate(next)
-  }, [derivedMeter, isNoOperation, log, onUpdate, readOnly])
+  }, [derivedMeter, log, onUpdate, readOnly])
 
   // While NO OPERATION, STOP always mirrors START (duration 0 by construction). The equality guard
   // keeps it loop-free; it also repairs logs that open as NO OPERATION with an empty stop time.
@@ -228,31 +230,73 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
     setWatchStop(watchStart)
   }, [isNoOperation, readOnly, watchStart, watchStop, setWatchStop])
 
+  const tabBar = (
+    <div
+      className="profile-tabs shrink-0"
+      role="tablist"
+      aria-label="Engine selector"
+      style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}
+    >
+      {ENGINE_TABS.map((tab) => {
+        const active = tab.id === activeTab
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onTabChange(tab.id)}
+            className={active ? 'active flex flex-col items-center justify-center' : 'flex flex-col items-center justify-center'}
+          >
+            {tab.label}
+            <span className="text-[9px] font-semibold opacity-70">
+              {tab.className === 'main' ? 'MAIN' : tab.className === 'auxiliary' ? 'AUX' : 'VESSEL'}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  // Vessel-level tab: hydraulic oil is not tied to an engine, so it gets its own console body
+  // (no status / meters / R.O.B. / parameters). Hooks above stay unconditional.
+  if (isVesselTab) {
+    return (
+      <section className="tech-panel tech-console" aria-label="Vessel Fluids">
+        {tabBar}
+        <div className="tech-console-body flex flex-col p-4 sm:p-5">
+          <div>
+            <span className="mb-4 flex items-center gap-2">
+              <Droplet size={16} className="text-[#ff4d2f]" aria-hidden="true" />
+              <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Vessel Fluids &amp; General R.O.B.</span>
+            </span>
+            <p className="mb-4 text-[11px] font-bold uppercase tracking-[.06em] text-[#7c8994]">
+              Steering gear &amp; winch · standard grades 68 / 100 / 46
+            </p>
+            {/* Expansion point: further vessel-level fluids (e.g. greases) can be added as
+                sibling cards in this sm:grid-cols-2 row. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MetricStepper
+                label="Hydraulic Oil Added (68/100/46)"
+                unit="L"
+                value={hydraulicOilAdded}
+                min={0}
+                max={9999}
+                step={5}
+                disabled={readOnly}
+                icon={<Droplets size={14} className="text-teal-600" aria-hidden="true" />}
+                onChange={setHydraulicOilAdded}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="tech-panel tech-console" aria-label="Daily Engine Monitor">
-      <div
-        className="profile-tabs shrink-0"
-        role="tablist"
-        aria-label="Engine selector"
-        style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}
-      >
-        {ENGINE_TABS.map((tab) => {
-          const active = tab.id === log.engineId
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onEngineChange(tab.id)}
-              className={active ? 'active flex flex-col items-center justify-center' : 'flex flex-col items-center justify-center'}
-            >
-              {tab.label}
-              <span className="text-[9px] font-semibold opacity-70">{tab.className === 'main' ? 'MAIN' : 'AUX'}</span>
-            </button>
-          )
-        })}
-      </div>
+      {tabBar}
 
       <div className="tech-console-body flex flex-col p-4 sm:p-5">
         <div>
@@ -507,8 +551,9 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
             <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Fluids &amp; Lubricants</span>
           </span>
 
-          {/* Expansion point: further fluids (e.g. Hydraulic Oil Added, Cylinder Oil Added) can be
-              added as sibling cards in this sm:grid-cols-2 row — bump to grid-cols-3 if needed. */}
+          {/* Expansion point: further engine fluids (e.g. Cylinder Oil Added) can be added as
+              sibling cards in this sm:grid-cols-2 row — bump to grid-cols-3 if needed.
+              Hydraulic Oil lives on the vessel-level VESSEL FLUIDS tab. */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MetricStepper
               label="L.O. Added (Liters)"

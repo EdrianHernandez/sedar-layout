@@ -1,8 +1,11 @@
 import type { EngineLog } from '../../types/engineLog'
+import type { MasterRob } from '../../data/chiefEngineerMockData'
 import { computeRunningHours, formatTimeOnly } from '../../utils/engineLog'
 
 interface DailyLogSummaryProps {
   logs: EngineLog[]
+  hydraulicOilAdded: number
+  masterRob: MasterRob
 }
 
 interface LogTotals {
@@ -114,9 +117,10 @@ function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
             {/* Meter columns are intentionally omitted here so the digital summary matches the
                 physical daily report format; the readings remain on the monitoring card. */}
             <td colSpan={4} className="px-5 py-4 text-right">{subtotalLabel}</td>
-            {/* Running Hours is intentionally blank: running hours are concurrent, per-machine values
-                used for maintenance tracking — summing them across engines would misrepresent the
-                time window. Consumable totals below remain vessel-wide. */}
+          {/* Running Hours is intentionally blank: running hours are concurrent, per-machine values
+              used for maintenance tracking — summing them across engines would misrepresent the
+              time window. The consumable sums in this row are per-group subtotals; vessel-wide
+              balances live in the Vessel R.O.B. table. */}
             <td className="px-5 py-4" />
             <td colSpan={2} className="px-5 py-4" />
             <td className="px-5 py-4 tabular-nums">{totals.consumed.toLocaleString()}</td>
@@ -130,23 +134,22 @@ function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
   )
 }
 
-function GrandCell({ label, value, unit }: { label: string; value: string; unit: string }) {
-  return (
-    <div className="text-right">
-      <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</span>
-      <strong className="text-lg font-black tabular-nums text-[#152f48]">
-        {value} <span className="text-[11px] font-bold text-slate-500">{unit}</span>
-      </strong>
-    </div>
-  )
-}
-
-export function DailyLogSummary({ logs }: DailyLogSummaryProps) {
+export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob }: DailyLogSummaryProps) {
   const mainLogs = logs.filter((log) => log.engineClass === 'main')
   const generatorLogs = logs.filter((log) => log.engineClass === 'auxiliary')
   const mainTotals = sumOf(mainLogs)
   const generatorTotals = sumOf(generatorLogs)
   const grandTotals = sumOf(logs)
+
+  // Physical report's bottom-left R.O.B. box: the master-inventory ledger for the watch —
+  // every consumable (fuel, lube, hydraulic, fresh water) = master stock less refills
+  // recorded per engine (fuel / L.O. / F.W.) and on the vessel tab (hydraulic oil).
+  const robRows = [
+    { label: 'Fuel Oil', grade: 'Diesel', master: masterRob.fuelOil, consumed: grandTotals.consumed },
+    { label: 'Lube Oil', grade: 'SA40 / 15W-40', master: masterRob.lubeOil, consumed: grandTotals.lube },
+    { label: 'Hydraulic Oil', grade: '68 / 100 / 46', master: masterRob.hydraulicOil, consumed: hydraulicOilAdded },
+    { label: 'Fresh Water (F.W.)', grade: null, master: masterRob.freshWater, consumed: grandTotals.fw },
+  ]
 
   return (
     <section aria-label="Watch log review summary" className="overflow-hidden rounded-[10px] border border-slate-200 bg-white">
@@ -165,13 +168,53 @@ export function DailyLogSummary({ logs }: DailyLogSummaryProps) {
       </div>
 
       <div className="mt-6 px-5 pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-slate-950 bg-slate-50 px-5 py-4">
-          <span className="text-sm font-black uppercase tracking-wide text-[#152f48]">Grand Totals (All Equipment)</span>
-          <div className="flex flex-wrap gap-x-8 gap-y-2">
-            <GrandCell label="Consumed" value={grandTotals.consumed.toLocaleString()} unit="L" />
-            <GrandCell label="L.O. Added" value={grandTotals.lube.toLocaleString()} unit="L" />
-            <GrandCell label="F.W./C. Added" value={grandTotals.fw.toLocaleString()} unit="L" />
-          </div>
+        {/* Vessel R.O.B. box (physical report bottom-left): the master-inventory ledger for the
+            watch — a 4-column table of fluid, starting master stock, refills consumed, and the
+            computed remaining balance. It replaces the old Grand Totals card: every consumable
+            (fuel, lube, hydraulic, fresh water) is consolidated here. The title shares one
+            continuous header band with the column labels so the figures sit closer to it. */}
+        <div className="overflow-hidden rounded-lg border border-slate-200">
+          <table className="w-full text-left">
+            <colgroup>
+              <col className="w-[42%]" />
+              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[24%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th colSpan={4} scope="col" className="px-5 py-3 text-sm font-black uppercase tracking-wide text-[#152f48]">
+                  Vessel R.O.B. (Remaining On Board)
+                </th>
+              </tr>
+              <tr className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th scope="col" className="px-5 py-2.5">Fluid / Lubricant</th>
+                <th scope="col" className="px-5 py-2.5 text-right">Master Inventory</th>
+                <th scope="col" className="px-5 py-2.5 text-right">Consumed</th>
+                <th scope="col" className="px-5 py-2.5 text-right">Final R.O.B.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {robRows.map((row) => (
+                <tr key={row.label} className="border-t border-slate-200 text-sm">
+                  <td className="px-5 py-3 font-bold text-slate-800">
+                    {row.label}
+                    {row.grade && <span className="font-semibold text-slate-500"> ({row.grade})</span>}
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums text-slate-700">
+                    {row.master.toLocaleString()} <span className="text-[11px] font-semibold text-slate-500">L</span>
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums text-slate-700">
+                    {row.consumed.toLocaleString()} <span className="text-[11px] font-semibold text-slate-500">L</span>
+                  </td>
+                  <td className="bg-slate-50 px-5 py-3 text-right font-black tabular-nums text-[#152f48]">
+                    {Math.max(0, row.master - row.consumed).toLocaleString()}{' '}
+                    <span className="text-[11px] font-semibold text-slate-500">L</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, CircleCheckBig, Eye, Loader2, Send, Undo2 } from 'lucide-react'
 import { DailyEngineMonitorCard } from '../../components/chief-engineer/DailyEngineMonitorCard'
 import { DailyLogSummary } from '../../components/chief-engineer/DailyLogSummary'
-import { consoleTitle } from '../../data/chiefEngineerMockData'
+import { consoleTitle, masterRobByVessel, type MonitorTabId } from '../../data/chiefEngineerMockData'
 import { useEngineRoom, type EngineRole } from '../../context/engineRoomStore'
-import type { EngineId, WatchLogReviewStatus } from '../../types/engineLog'
+import type { WatchLogReviewStatus } from '../../types/engineLog'
 import { useChiefEngineer } from './chiefEngineerOutlet'
 
 interface ChiefEngineerMonitoringPageProps {
@@ -19,13 +19,13 @@ const DISABLED_CLS = 'disabled:cursor-not-allowed disabled:opacity-60'
 
 export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onReviewStatusChange }: ChiefEngineerMonitoringPageProps) {
   const { activeVessel, logs, updateLog, notify, now } = useChiefEngineer()
-  const { watchStop } = useEngineRoom()
-  const [engineId, setEngineId] = useState<EngineId>('ME-PORT')
+  const { watchStop, hydraulicOilAdded } = useEngineRoom()
+  const [activeTab, setActiveTab] = useState<MonitorTabId>('ME-PORT')
   const [isWorking, setIsWorking] = useState(false)
   const [stopError, setStopError] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(() => (reviewStatus === 'approved' ? 'review' : 'edit'))
   const timersRef = useRef<number[]>([])
-  const log = logs.find((item) => item.engineId === engineId) ?? logs[0]
+  const log = (activeTab === 'VESSEL-FLUIDS' ? null : logs.find((item) => item.engineId === activeTab)) ?? logs[0]
   const dateLabel = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
   useEffect(() => {
@@ -203,9 +203,20 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
       </div>
 
       {isReviewing ? (
-        <DailyLogSummary logs={logs} />
+        <DailyLogSummary
+          logs={logs}
+          hydraulicOilAdded={hydraulicOilAdded}
+          masterRob={masterRobByVessel[activeVessel.id]}
+        />
       ) : (
-        <DailyEngineMonitorCard log={log} onEngineChange={setEngineId} onUpdate={updateLog} readOnly={isReadOnly} stopError={stopError} />
+        <DailyEngineMonitorCard
+          log={log}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onUpdate={updateLog}
+          readOnly={isReadOnly}
+          stopError={stopError}
+        />
       )}
     </>
   )
