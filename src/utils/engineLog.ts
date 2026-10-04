@@ -23,14 +23,20 @@ export function formatRunningHours(value: number | null): string {
   return value.toFixed(1)
 }
 
-// Exact duration between two HH:MM watch times, in decimal hours.
-// Returns null when either time is missing/unparseable; negative spans roll over midnight (overnight watch).
+// Exact duration between two watch times, in decimal hours.
+// Strict maritime 24-hour format: both values must be exactly "HH:MM" with HH ≤ 23 and
+// MM ≤ 59 — mid-entry partials ("20", "20:2") or impossible values ("99:99") return null
+// so the meter and total fall back safely. Negative spans roll over midnight (overnight).
 export function computeWatchDurationHours(start: string, stop: string): number | null {
-  if (!start || !stop) return null
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = stop.split(':').map(Number)
-  if (![sh, sm, eh, em].every((part) => Number.isFinite(part))) return null
-  let minutes = eh * 60 + em - (sh * 60 + sm)
+  const parse = (value: string): [number, number] | null => {
+    if (!/^\d{2}:\d{2}$/.test(value)) return null
+    const [hours, minutes] = value.split(':').map(Number)
+    return hours <= 23 && minutes <= 59 ? [hours, minutes] : null
+  }
+  const from = parse(start)
+  const to = parse(stop)
+  if (!from || !to) return null
+  let minutes = to[0] * 60 + to[1] - (from[0] * 60 + from[1])
   if (minutes < 0) minutes += 24 * 60
   return Math.round((minutes / 60) * 100) / 100
 }

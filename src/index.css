@@ -1698,6 +1698,8 @@ td { border-top: 1px solid #e2e2e2; }
 .no-number-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .no-number-spinner { -moz-appearance: textfield; appearance: textfield; }
 
+.section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #152f48; }
+
 .tech-table-scroll { overflow-x: auto; }
 .tech-table { width: 100%; min-width: 600px; border-collapse: collapse; }
 .tech-table th { height: 37px; padding: 0 14px; color: #5d6872; background: #fafafa; font-size: 8px; font-weight: 700; text-align: left; text-transform: uppercase; }

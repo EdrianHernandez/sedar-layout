@@ -30,11 +30,14 @@ interface MetricStepperProps {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
-const TIME_INPUT_CLS =
-  'h-14 w-44 max-w-full rounded-lg border-2 border-slate-300 bg-white px-4 text-xl font-black tabular-nums text-slate-900 outline-none transition focus:border-[#315d82] focus:ring-2 focus:ring-[#315d82]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400'
+// Shared skin for every interactive field in Row 1: same height, radius, light-gray
+// border, white background and focus ring so status / times read as one control set.
+const FIELD_SHELL =
+  'h-14 w-full rounded-lg border-2 border-slate-300 bg-white transition hover:border-slate-400 focus:border-[#315d82] focus:ring-2 focus:ring-[#315d82]/15 disabled:cursor-not-allowed disabled:hover:border-slate-300'
 
-const STATUS_SELECT_CLS =
-  'h-14 w-full cursor-pointer appearance-none rounded-lg border-2 pl-9 pr-9 text-base font-black uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff8b77] disabled:cursor-not-allowed disabled:opacity-60'
+const TIME_INPUT_CLS = `${FIELD_SHELL} px-4 text-xl font-black tabular-nums text-slate-900 outline-none placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400`
+
+const STATUS_SELECT_CLS = `${FIELD_SHELL} cursor-pointer appearance-none pl-9 pr-9 text-base font-black uppercase tracking-wider outline-none disabled:opacity-60`
 
 const ROW_LABEL_CLS = 'text-[11px] font-extrabold uppercase tracking-[.08em] text-[#5f6873]'
 
@@ -43,11 +46,29 @@ function roundTo(value: number, decimals: number): number {
   return Math.round(value * factor) / factor
 }
 
+// Masked 24-hour entry: digits only (max 4) with the colon auto-inserted after HH, so
+// typing 2,1,0,1 yields "21:01" — never AM/PM, never browser locale formatting.
+function maskTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4)
+  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
+}
+
+// On blur, complete and clamp a partial entry to strict HH:MM: "9" → "09:00",
+// "21" → "21:00", "213" → "21:30"; hours ≤ 23, minutes ≤ 59; empty stays empty
+// (the stop-required gate and the NO-OPERATION repair own the empty case).
+function completeTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4)
+  if (!digits) return ''
+  const hours = Math.min(23, Number(digits.slice(0, 2).padStart(2, '0')))
+  const minutes = Math.min(59, Number(digits.slice(2).padEnd(2, '0')))
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * 34
 
 const PMS_TONES = {
   critical: {
-    card: 'border-red-300 bg-red-50 text-red-900',
+    accent: 'border-t-red-500',
     track: 'text-red-100',
     ring: 'text-red-600',
     percent: 'text-red-600',
@@ -57,7 +78,7 @@ const PMS_TONES = {
     helper: 'text-red-800/70',
   },
   warning: {
-    card: 'border-amber-300 bg-amber-50 text-amber-900',
+    accent: 'border-t-amber-500',
     track: 'text-amber-100',
     ring: 'text-amber-500',
     percent: 'text-amber-600',
@@ -67,7 +88,7 @@ const PMS_TONES = {
     helper: 'text-amber-800/70',
   },
   normal: {
-    card: 'border-blue-200 bg-blue-50 text-blue-900',
+    accent: 'border-t-blue-500',
     track: 'text-blue-100',
     ring: 'text-blue-600',
     percent: 'text-blue-600',
@@ -189,8 +210,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         // rpm 0. The meter follows automatically through the reconciliation effect below
         // (delta 0 ⇒ meter = previous). No auto-sync afterwards, so recorded stop < start
         // values survive — only a fresh status selection resets them.
-        // The watch window resets to the current wall-clock time with STOP pinned to START, so the
-        // duration is 0 by construction — both stay editable, see the keep-stop-matched effect.
+        // The watch window resets to the current wall-clock time with STOP matching START, so the
+        // duration starts at 0 — both stay freely editable afterwards (see the empty-stop repair
+        // effect): total hours remain 0 under NO OPERATION regardless of the stop value.
         const clock = currentClockTime()
         onUpdate({
           ...log,
@@ -227,9 +249,11 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
 
   // While NO OPERATION, STOP always mirrors START (duration 0 by construction). The equality guard
   // keeps it loop-free; it also repairs logs that open as NO OPERATION with an empty stop time.
+  // NO OPERATION repairs only an EMPTY stop time (logs that open without one). The value is
+  // otherwise freely editable: duration, meter and TOTAL stay 0 via the watchDelta rule above,
+  // so a later stop can only mark the end of the observation window — never add hours.
   useEffect(() => {
-    if (readOnly || !isNoOperation) return
-    if (watchStop === watchStart) return
+    if (readOnly || !isNoOperation || watchStop) return
     setWatchStop(watchStart)
   }, [isNoOperation, readOnly, watchStart, watchStop, setWatchStop])
 
@@ -269,9 +293,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         {tabBar}
         <div className="tech-console-body flex flex-col p-4 sm:p-5">
           <div>
-            <span className="mb-4 flex items-center gap-2">
+            <span className="section-header">
               <Droplet size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-              <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Vessel Fluids &amp; General R.O.B.</span>
+              <span>Vessel Fluids &amp; General R.O.B.</span>
             </span>
             <p className="mb-4 text-[11px] font-bold uppercase tracking-[.06em] text-[#7c8994]">
               Steering gear &amp; winch · standard grades 68 / 100 / 46
@@ -303,13 +327,14 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
 
       <div className="tech-console-body flex flex-col p-4 sm:p-5">
         <div>
-          <span className="mb-4 flex items-center gap-2">
+          <span className="section-header">
             <Clock size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Running Hours Log</span>
+            <span>Running Hours Log</span>
           </span>
 
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="grid w-[240px] shrink-0 gap-1">
+          {/* Row 1 — time & status: inputs plus the computed total side by side. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="grid gap-1">
               <span className={ROW_LABEL_CLS}>Engine Status</span>
               <div className={`relative ${activeStatusOption.text}`}>
                 <span
@@ -321,7 +346,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   value={activeStatus}
                   disabled={readOnly}
                   onChange={(event) => selectStatus(event.target.value as EngineStatus)}
-                  className={`${STATUS_SELECT_CLS} ${activeStatusOption.bg} ${activeStatusOption.text} ${activeStatusOption.edge} ${activeStatusOption.hover}`}
+                  className={`${STATUS_SELECT_CLS} ${activeStatusOption.text}`}
                 >
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.id} value={option.id} className={`${option.bg} ${option.text}`}>
@@ -336,34 +361,51 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
             <label className="grid gap-1">
               <span className={ROW_LABEL_CLS}>Start Time</span>
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="__:__"
                 aria-label="Start time"
                 value={watchStart}
                 disabled={readOnly}
-                onChange={(event) => setWatchStart(event.target.value)}
+                onChange={(event) => setWatchStart(maskTimeInput(event.target.value))}
+                onBlur={() => setWatchStart(completeTimeInput(watchStart))}
                 className={TIME_INPUT_CLS}
               />
             </label>
             <label className="grid gap-1">
               <span className={ROW_LABEL_CLS}>Stop Time (Cut-off)</span>
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="__:__"
                 aria-label="Stop time (cut-off)"
                 value={watchStop}
-                disabled={readOnly || isNoOperation}
-                onChange={(event) => setWatchStop(event.target.value)}
+                disabled={readOnly}
+                onChange={(event) => setWatchStop(maskTimeInput(event.target.value))}
+                onBlur={() => setWatchStop(completeTimeInput(watchStop))}
                 className={`${TIME_INPUT_CLS}${stopError && !watchStop ? ' border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
               />
               {stopError && !watchStop && (
                 <span className="text-[10px] font-bold text-red-600">A stop / cut-off time is required before review.</span>
               )}
             </label>
+
+            <div className="grid gap-1">
+              <span className={ROW_LABEL_CLS}>Total Running Hours</span>
+              <div className="flex h-14 w-full items-center justify-center gap-1.5 rounded-lg border-2 border-emerald-300 bg-emerald-50 px-4">
+                <strong className="text-xl font-black tabular-nums leading-none text-emerald-700">{watchHours.toFixed(1)}</strong>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">HRS</span>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* Row 2 — meters & maintenance below the time inputs. */}
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center">
                 <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
                   {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
@@ -373,7 +415,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
 
             <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center">
                 <input
                   type="text"
                   inputMode="decimal"
@@ -387,17 +429,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
               </div>
             </div>
 
-            <div className="flex h-full flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em]">Total Running Hours</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
-                <strong className="text-3xl font-black tabular-nums leading-none">{watchHours.toFixed(1)}</strong>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-green-700/70">HRS</span>
-              </div>
-            </div>
-
-            <div className={`flex h-full flex-col rounded-lg border p-3 ${tone.card}`}>
+            <div className={`flex h-full flex-col rounded-lg border border-[#d4d4d4] border-t-2 ${tone.accent} bg-white p-3 sm:col-span-2 lg:col-span-1`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-[.08em]">Next Maintenance</span>
+                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Next Maintenance</span>
                 {pmsTone === 'critical' && (
                   <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${tone.chip}`}>
                     <AlertTriangle size={10} aria-hidden="true" /> Critical
@@ -448,9 +482,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         <hr className="my-8 border-slate-200" />
 
         <div>
-          <span className="mb-4 flex items-center gap-2">
+          <span className="section-header">
             <Fuel size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Fuel R.O.B. (Remaining On Board)</span>
+            <span>Fuel R.O.B. (Remaining On Board)</span>
           </span>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -557,9 +591,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         <hr className="my-8 border-slate-200" />
 
         <div>
-          <span className="mb-4 flex items-center gap-2">
+          <span className="section-header">
             <Droplet size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Fluids &amp; Lubricants</span>
+            <span>Fluids &amp; Lubricants</span>
           </span>
 
           {/* Expansion point: further engine fluids (e.g. Cylinder Oil Added) can be added as
@@ -594,9 +628,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         <hr className="my-8 border-slate-200" />
 
         <div>
-          <span className="mb-4 flex items-center gap-2">
+          <span className="section-header">
             <Activity size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Engine Parameters</span>
+            <span>Engine Parameters</span>
           </span>
           <div className="grid gap-3 md:grid-cols-3">
             <MetricStepper label="RPM" unit="rev/min" value={log.rpm} min={0} max={1000} step={5} disabled={isNoOperation || readOnly} onChange={(rpm) => onUpdate({ ...log, rpm })} />
