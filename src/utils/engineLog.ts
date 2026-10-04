@@ -39,3 +39,9 @@ export function computeWatchDurationHours(start: string, stop: string): number |
 export function currentClockTime(date: Date = new Date()): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
+
+// Exact times entered by the user, regardless of each engine's OPERATED / NO OPERATION badge.
+// While the log is still being filled (no cut-off yet) it reads "06:00 – ongoing".
+export function formatWatchWindow(watchStart: string, watchStop: string): string {
+  return watchStop ? `${watchStart || '—'} – ${watchStop}` : `${watchStart || '—'} – ongoing`
+}

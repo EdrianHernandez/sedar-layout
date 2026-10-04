@@ -15,6 +15,8 @@ export interface EngineLog {
   waterTemp: number
   fuelRobStart: number
   fuelRobStop: number
+  lubeOilAdded: number
+  fwCoolantAdded: number
   meterPrevious: number
   meterCurrent: number
   lastOverhaulMeter: number

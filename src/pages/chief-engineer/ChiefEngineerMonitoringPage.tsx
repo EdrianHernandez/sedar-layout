@@ -6,6 +6,7 @@ import { consoleTitle } from '../../data/chiefEngineerMockData'
 import { useEngineRoom, type EngineRole } from '../../context/engineRoomStore'
 import type { EngineId, WatchLogReviewStatus } from '../../types/engineLog'
 import { useChiefEngineer } from './chiefEngineerOutlet'
+import { formatWatchWindow } from '../../utils/engineLog'
 
 interface ChiefEngineerMonitoringPageProps {
   currentRole: EngineRole
@@ -26,6 +27,8 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
   const [viewMode, setViewMode] = useState<ViewMode>(() => (reviewStatus === 'approved' ? 'review' : 'edit'))
   const timersRef = useRef<number[]>([])
   const log = logs.find((item) => item.engineId === engineId) ?? logs[0]
+  const dateLabel = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const windowLabel = formatWatchWindow(watchStart, watchStop)
 
   useEffect(() => {
     const timers = timersRef.current
@@ -185,8 +188,17 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           </span>
           <h1>{isReviewing ? 'Review & Confirmation' : 'Daily Engine Monitoring'}</h1>
           <p>
-            {activeVessel.name} ·{' '}
-            {isReviewing ? 'Verify all entries for typos before final submission.' : 'Capture running hour meter readings and watch parameters.'}
+            {isReviewing ? (
+              <>
+                {activeVessel.name} · {dateLabel} · Watch window:{' '}
+                <strong className="font-bold text-slate-700">{windowLabel}</strong> · Verify all entries for typos before final
+                submission.
+              </>
+            ) : (
+              <>
+                {activeVessel.name} · Capture running hour meter readings and watch parameters.
+              </>
+            )}
           </p>
         </div>
         <div className="tech-header-actions">
@@ -195,7 +207,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
       </div>
 
       {isReviewing ? (
-        <DailyLogSummary logs={logs} vesselName={activeVessel.name} now={now} watchStart={watchStart} watchStop={watchStop} />
+        <DailyLogSummary logs={logs} watchStart={watchStart} watchStop={watchStop} />
       ) : (
         <DailyEngineMonitorCard log={log} onEngineChange={setEngineId} onUpdate={updateLog} readOnly={isReadOnly} stopError={stopError} />
       )}

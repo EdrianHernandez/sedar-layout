@@ -1,5 +1,5 @@
-import { useCallback, useEffect } from 'react'
-import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown } from 'lucide-react'
+import { useCallback, useEffect, type ReactNode } from 'react'
+import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown, Droplet, Droplets } from 'lucide-react'
 import { useEngineRoom } from '../../context/engineRoomStore'
 import type { EngineLog } from '../../types/engineLog'
 import type { PMSInterval } from '../../types/pmsChecklist'
@@ -23,6 +23,7 @@ interface MetricStepperProps {
   step: number
   decimals?: number
   disabled?: boolean
+  icon?: ReactNode
   onChange: (value: number) => void
 }
 
@@ -86,14 +87,17 @@ const STATUS_OPTIONS = [
 
 type EngineStatus = (typeof STATUS_OPTIONS)[number]['id']
 
-function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disabled = false, onChange }: MetricStepperProps) {
+function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disabled = false, icon, onChange }: MetricStepperProps) {
   const bump = (direction: 1 | -1) => {
     onChange(roundTo(clamp(value + step * direction, min, max), decimals))
   }
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
-      <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">{label}</span>
+      <span className="flex items-center gap-1.5">
+        {icon}
+        <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">{label}</span>
+      </span>
       <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
         <button
           type="button"
@@ -492,6 +496,42 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-700/70">L</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <hr className="my-8 border-slate-200" />
+
+        <div>
+          <span className="mb-4 flex items-center gap-2">
+            <Droplet size={16} className="text-[#ff4d2f]" aria-hidden="true" />
+            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Fluids &amp; Lubricants</span>
+          </span>
+
+          {/* Expansion point: further fluids (e.g. Hydraulic Oil Added, Cylinder Oil Added) can be
+              added as sibling cards in this sm:grid-cols-2 row — bump to grid-cols-3 if needed. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <MetricStepper
+              label="L.O. Added (Liters)"
+              unit="L"
+              value={log.lubeOilAdded}
+              min={0}
+              max={9999}
+              step={5}
+              disabled={readOnly}
+              icon={<Droplets size={14} className="text-amber-600" aria-hidden="true" />}
+              onChange={(lubeOilAdded) => onUpdate({ ...log, lubeOilAdded })}
+            />
+            <MetricStepper
+              label="F.W. / Coolant Added (Liters)"
+              unit="L"
+              value={log.fwCoolantAdded}
+              min={0}
+              max={9999}
+              step={5}
+              disabled={readOnly}
+              icon={<Droplet size={14} className="text-blue-500" aria-hidden="true" />}
+              onChange={(fwCoolantAdded) => onUpdate({ ...log, fwCoolantAdded })}
+            />
           </div>
         </div>
 
