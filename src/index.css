@@ -1672,6 +1672,12 @@ td { border-top: 1px solid #e2e2e2; }
 .tech-header-centered .tech-header-actions { gap: 12px; }
 @media(max-width:900px){.tech-dashboard-header.tech-header-centered{align-items:flex-start}}
 
+/* Monitoring console: page scroll is locked — the header and engine tabs stay pinned and only the panel body scrolls. */
+.workspace:has(.tech-console) { height: 100dvh; overflow: hidden; }
+.technical-dashboard:has(.tech-console) { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+.tech-console { display: flex; flex-direction: column; min-height: 0; }
+.tech-console-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+
 .tech-summary-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .tech-summary-card { min-height: 120px; padding: 16px 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 .tech-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }

@@ -92,7 +92,7 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disab
   }
 
   return (
-    <div className="rounded-lg border border-[#d4d4d4] bg-white p-3">
+    <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
       <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">{label}</span>
       <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
         <button
@@ -225,9 +225,9 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
   }, [isNoOperation, readOnly, watchStart, watchStop, setWatchStop])
 
   return (
-    <section className="tech-panel" aria-label="Daily Engine Monitor">
+    <section className="tech-panel tech-console" aria-label="Daily Engine Monitor">
       <div
-        className="profile-tabs"
+        className="profile-tabs shrink-0"
         role="tablist"
         aria-label="Engine selector"
         style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}
@@ -250,14 +250,14 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
         })}
       </div>
 
-      <div className="grid gap-4 p-4 sm:p-5">
+      <div className="tech-console-body flex flex-col p-4 sm:p-5">
         <div>
-          <span className="flex items-center gap-2">
+          <span className="mb-4 flex items-center gap-2">
             <Clock size={16} className="text-[#ff4d2f]" aria-hidden="true" />
             <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Watch Timeline</span>
           </span>
 
-          <div className="mt-3 flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             <label className="grid w-[240px] shrink-0 gap-1">
               <span className={ROW_LABEL_CLS}>Engine Status</span>
               <div className={`relative ${activeStatusOption.text}`}>
@@ -309,8 +309,34 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
             </label>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+                <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
+                  {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </span>
+                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
+              </div>
+            </div>
+
+            <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  readOnly
+                  tabIndex={-1}
+                  aria-label="Current meter reading (auto-computed from watch times)"
+                  value={displayMeter.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  className="no-number-spinner w-full cursor-not-allowed bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none focus:outline-none"
+                />
+                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
+              </div>
+            </div>
+
+            <div className="flex h-full flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
               <span className="text-[10px] font-bold uppercase tracking-[.08em]">Hours for this Watch</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums leading-none">{watchHours.toFixed(1)}</strong>
@@ -318,7 +344,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
               </div>
             </div>
 
-            <div className={`flex flex-col rounded-lg border p-3 ${tone.card}`}>
+            <div className={`flex h-full flex-col rounded-lg border p-3 ${tone.card}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-[.08em]">Next Maintenance</span>
                 {pmsTone === 'critical' && (
@@ -365,43 +391,19 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
                 </div>
               </div>
             </div>
-
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
-                <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
-                  {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                </span>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  readOnly
-                  tabIndex={-1}
-                  aria-label="Current meter reading (auto-computed from watch times)"
-                  value={displayMeter.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                  className="no-number-spinner w-full cursor-not-allowed bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none focus:outline-none"
-                />
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
-              </div>
-            </div>
           </div>
         </div>
 
+        <hr className="my-8 border-slate-200" />
+
         <div>
-          <span className="flex items-center gap-2">
+          <span className="mb-4 flex items-center gap-2">
             <Fuel size={16} className="text-[#ff4d2f]" aria-hidden="true" />
             <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Fuel R.O.B. (Remaining On Board)</span>
           </span>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">ROB Start (L)</span>
               <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <button
@@ -442,7 +444,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
               </div>
             </div>
 
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+            <div className="flex h-full flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">ROB Stop (L)</span>
               <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <button
@@ -483,7 +485,7 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
               </div>
             </div>
 
-            <div className="flex flex-col rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+            <div className="flex h-full flex-col rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
               <span className="text-[10px] font-bold uppercase tracking-[.08em]">Fuel Consumed</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-amber-200 bg-white/60 px-1 py-1">
                 <strong className="text-3xl font-black tabular-nums">{consumption.toLocaleString()}</strong>
@@ -493,12 +495,14 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
           </div>
         </div>
 
+        <hr className="my-8 border-slate-200" />
+
         <div>
-          <span className="flex items-center gap-2">
+          <span className="mb-4 flex items-center gap-2">
             <Activity size={16} className="text-[#ff4d2f]" aria-hidden="true" />
             <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Engine Parameters</span>
           </span>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             <MetricStepper label="RPM" unit="rev/min" value={log.rpm} min={0} max={1000} step={5} disabled={isNoOperation || readOnly} onChange={(rpm) => onUpdate({ ...log, rpm })} />
             <MetricStepper label="Oil Pressure" unit="bar" value={log.oilPressure} min={0} max={8} step={0.1} decimals={1} disabled={readOnly} onChange={(oilPressure) => onUpdate({ ...log, oilPressure })} />
             <MetricStepper label="Water Temp" unit="°C" value={log.waterTemp} min={0} max={110} step={1} disabled={readOnly} onChange={(waterTemp) => onUpdate({ ...log, waterTemp })} />
