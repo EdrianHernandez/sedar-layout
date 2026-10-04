@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PanelLeft, X, Check, ChevronUp } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { departments, marketingNavigationGroups, technicalNavigationGroups, chiefEngineerNavigationGroups } from '../../data/mockData'
+import { departments, marketingNavigationGroups, technicalNavigationGroups, chiefEngineerNavigationGroups, dutyEngineerNavigationGroups } from '../../data/mockData'
 import type { Department, NavigationGroup } from '../../types'
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ const navigationByDepartment: Record<Department, NavigationGroup[]> = {
   marketing: marketingNavigationGroups,
   technical: technicalNavigationGroups,
   'chief-engineer': chiefEngineerNavigationGroups,
+  'duty-engineer': dutyEngineerNavigationGroups,
 }
 
 export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, onDesktopClose, onMobileClose, onNavigate, onDepartmentChange }: SidebarProps) {
@@ -82,7 +83,7 @@ export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, on
                 <ul className="nav-list">
                   {group.items.map(({ label, path, icon: Icon }) => (
                     <li key={path}>
-                      <NavLink to={path} end={path === `/${department}/dashboard` || path.startsWith('/chief-engineer')} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
+                      <NavLink to={path} end={path === `/${department}/dashboard` || path.startsWith('/chief-engineer') || path.startsWith('/duty-engineer')} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
                         <Icon aria-hidden="true" size={16} />
                         <span>{label}</span>
                       </NavLink>

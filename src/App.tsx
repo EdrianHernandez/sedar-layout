@@ -24,10 +24,12 @@ import { ChiefEngineerMonitoringPage } from './pages/chief-engineer/ChiefEnginee
 import { ChiefEngineerPmsPage } from './pages/chief-engineer/ChiefEngineerPmsPage'
 import { DailyEngineLogHistory } from './pages/chief-engineer/DailyEngineLogHistory'
 import { ChiefEngineerPmsHistoryPage } from './pages/chief-engineer/ChiefEngineerPmsHistoryPage'
+import { useEngineRoom } from './context/engineRoomStore'
 import type { Department } from './types'
 
 function getDepartmentFromPath(pathname: string): Department {
   if (pathname.startsWith('/chief-engineer')) return 'chief-engineer'
+  if (pathname.startsWith('/duty-engineer')) return 'duty-engineer'
   if (pathname.startsWith('/technical')) return 'technical'
   return 'marketing'
 }
@@ -35,6 +37,7 @@ function getDepartmentFromPath(pathname: string): Department {
 export default function App() {
   const location = useLocation()
   const department = getDepartmentFromPath(location.pathname)
+  const { currentRole, reviewStatus, setReviewStatus } = useEngineRoom()
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('sedar-marketing-sidebar-collapsed') !== 'true')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [toast, setToast] = useState('')
@@ -106,12 +109,35 @@ export default function App() {
         <Route path="/technical/reports" element={<TechnicalPlaceholderPage title="Maintenance Reports" description="View maintenance performance reports, fleet status summaries, and compliance metrics." />} />
         <Route path="/chief-engineer" element={<ChiefEngineerLayout onNotify={notify} />}>
           <Route index element={<ChiefEngineerHomePage />} />
-          <Route path="monitoring" element={<ChiefEngineerMonitoringPage />} />
+          <Route
+            path="monitoring"
+            element={
+              <ChiefEngineerMonitoringPage
+                currentRole={currentRole}
+                reviewStatus={reviewStatus}
+                onReviewStatusChange={setReviewStatus}
+              />
+            }
+          />
           <Route path="monitoring/history" element={<DailyEngineLogHistory />} />
           <Route path="pms" element={<ChiefEngineerPmsPage />} />
           <Route path="pms/history/main-engine" element={<ChiefEngineerPmsHistoryPage scope="Main Engine" />} />
           <Route path="pms/history/transmission" element={<ChiefEngineerPmsHistoryPage scope="Transmission" />} />
           <Route path="pms/history/generator" element={<ChiefEngineerPmsHistoryPage scope="Generator" />} />
+        </Route>
+        <Route path="/duty-engineer" element={<ChiefEngineerLayout onNotify={notify} />}>
+          <Route index element={<ChiefEngineerHomePage />} />
+          <Route
+            path="monitoring"
+            element={
+              <ChiefEngineerMonitoringPage
+                currentRole={currentRole}
+                reviewStatus={reviewStatus}
+                onReviewStatusChange={setReviewStatus}
+              />
+            }
+          />
+          <Route path="monitoring/history" element={<DailyEngineLogHistory />} />
         </Route>
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
       </Routes>

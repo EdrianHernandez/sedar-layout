@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
-import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, Check, ChevronDown } from 'lucide-react'
+import { useCallback, useEffect } from 'react'
+import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown } from 'lucide-react'
+import { useEngineRoom } from '../../context/engineRoomStore'
 import type { EngineLog } from '../../types/engineLog'
 import type { PMSInterval } from '../../types/pmsChecklist'
 import { ENGINE_TABS, PMS_INTERVALS } from '../../data/chiefEngineerMockData'
+import { computeWatchDurationHours, currentClockTime } from '../../utils/engineLog'
 
 interface DailyEngineMonitorCardProps {
   log: EngineLog
   onEngineChange: (engineId: EngineLog['engineId']) => void
   onUpdate: (log: EngineLog) => void
+  readOnly?: boolean
+  stopError?: boolean
 }
 
 interface MetricStepperProps {
@@ -18,10 +22,19 @@ interface MetricStepperProps {
   max: number
   step: number
   decimals?: number
+  disabled?: boolean
   onChange: (value: number) => void
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const TIME_INPUT_CLS =
+  'h-14 w-44 max-w-full rounded-lg border-2 border-slate-300 bg-white px-4 text-xl font-black tabular-nums text-slate-900 outline-none transition focus:border-[#315d82] focus:ring-2 focus:ring-[#315d82]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400'
+
+const STATUS_SELECT_CLS =
+  'h-14 w-full cursor-pointer appearance-none rounded-lg border-2 pl-9 pr-9 text-base font-black uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff8b77] disabled:cursor-not-allowed disabled:opacity-60'
+
+const ROW_LABEL_CLS = 'text-[11px] font-extrabold uppercase tracking-[.08em] text-[#5f6873]'
 
 function roundTo(value: number, decimals: number): number {
   const factor = 10 ** decimals
@@ -66,14 +79,14 @@ const PMS_TONES = {
 type PmsTone = keyof typeof PMS_TONES
 
 const STATUS_OPTIONS = [
-  { id: 'running', label: 'Running', border: 'border-[#a8d9bc]', bg: 'bg-[#d9f1e3]', text: 'text-[#116437]' },
-  { id: 'stopped', label: 'Stopped', border: 'border-[#efd181]', bg: 'bg-[#fff0bd]', text: 'text-[#775000]' },
-  { id: 'standby', label: 'Standby', border: 'border-[#c9d1d7]', bg: 'bg-[#edf0f2]', text: 'text-[#4f5d68]' },
+  { id: 'operated', label: 'Operated', bg: 'bg-green-100', text: 'text-green-800', edge: 'border-green-300', hover: 'hover:bg-green-200' },
+  { id: 'no-operation', label: 'No Operation', bg: 'bg-amber-100', text: 'text-amber-800', edge: 'border-amber-300', hover: 'hover:bg-amber-200' },
+  { id: 'standby', label: 'Standby', bg: 'bg-slate-100', text: 'text-slate-700', edge: 'border-slate-300', hover: 'hover:bg-slate-200' },
 ] as const
 
 type EngineStatus = (typeof STATUS_OPTIONS)[number]['id']
 
-function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onChange }: MetricStepperProps) {
+function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disabled = false, onChange }: MetricStepperProps) {
   const bump = (direction: 1 | -1) => {
     onChange(roundTo(clamp(value + step * direction, min, max), decimals))
   }
@@ -86,7 +99,8 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onCha
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={() => bump(-1)}
-          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          disabled={disabled}
+          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Minus size={24} strokeWidth={3} />
         </button>
@@ -99,11 +113,12 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onCha
             max={max}
             step={step}
             value={value}
+            disabled={disabled}
             onChange={(event) => {
               const next = Number(event.target.value)
               onChange(Number.isFinite(next) && next >= 0 ? next : 0)
             }}
-            className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+            className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           />
           <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">{unit}</span>
         </div>
@@ -111,7 +126,8 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onCha
           type="button"
           aria-label={`Increase ${label}`}
           onClick={() => bump(1)}
-          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          disabled={disabled}
+          className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={24} strokeWidth={3} />
         </button>
@@ -120,32 +136,26 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, onCha
   )
 }
 
-export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyEngineMonitorCardProps) {
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
-  const statusMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!statusMenuOpen) return
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!statusMenuRef.current?.contains(event.target as Node)) setStatusMenuOpen(false)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setStatusMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [statusMenuOpen])
-
+export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly = false, stopError = false }: DailyEngineMonitorCardProps) {
+  const { watchStart, watchStop, setWatchStart, setWatchStop } = useEngineRoom()
   const isRunning = Boolean(log.timeStart) && !log.timeStop
   const hasStarted = Boolean(log.timeStart)
   const consumption = Math.max(0, log.fuelRobStart - log.fuelRobStop)
-  const watchHours = Math.max(0, roundTo(log.meterCurrent - log.meterPrevious, 1))
 
-  const sinceOverhaul = Math.max(0, roundTo(log.meterCurrent - log.lastOverhaulMeter, 1))
+  const activeStatus: EngineStatus = isRunning ? 'operated' : hasStarted ? 'no-operation' : 'standby'
+  const activeStatusOption = STATUS_OPTIONS.find((option) => option.id === activeStatus) ?? STATUS_OPTIONS[0]
+  const isNoOperation = activeStatus === 'no-operation'
+
+  // Strict auto-calculation: hours run this watch come purely from WATCH START → WATCH STOP.
+  // 0 while NO OPERATION · null while the times are incomplete · otherwise decimal hours (overnight included).
+  const watchDelta = activeStatus === 'no-operation' ? 0 : computeWatchDurationHours(watchStart, watchStop)
+  // Current Meter = Previous + delta; null until both times exist, so the field falls back to the previous reading.
+  const derivedMeter = watchDelta === null ? null : roundTo(log.meterPrevious + watchDelta, 1)
+  const displayMeter = derivedMeter ?? log.meterPrevious
+  // Derived from the rounded meter so "Hours for this Watch" and the meter card can never disagree.
+  const watchHours = derivedMeter === null ? 0 : roundTo(derivedMeter - log.meterPrevious, 1)
+
+  const sinceOverhaul = Math.max(0, roundTo(displayMeter - log.lastOverhaulMeter, 1))
   const nextInterval: PMSInterval = PMS_INTERVALS.find((interval) => Number(interval.replace('H', '')) > sinceOverhaul) ?? '6000H'
   const intervalHours = Number(nextInterval.replace('H', ''))
   const pmsRemaining = Math.max(0, roundTo(intervalHours - sinceOverhaul, 1))
@@ -153,30 +163,52 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
   const pmsTone: PmsTone = pmsRemaining < 10 ? 'critical' : pmsRemaining < 50 ? 'warning' : 'normal'
   const tone = PMS_TONES[pmsTone]
 
-  const bumpMeter = (direction: 1 | -1) => {
-    onUpdate({ ...log, meterCurrent: roundTo(clamp(log.meterCurrent + 0.1 * direction, 0, 999999), 1) })
-  }
-
   const bumpRobStop = (direction: 1 | -1) => {
     onUpdate({ ...log, fuelRobStop: clamp(log.fuelRobStop + 10 * direction, 0, 999999) })
   }
 
-  const activeStatus: EngineStatus = isRunning ? 'running' : hasStarted ? 'stopped' : 'standby'
-  const activeStatusOption = STATUS_OPTIONS.find((option) => option.id === activeStatus) ?? STATUS_OPTIONS[0]
+  const selectStatus = useCallback(
+    (next: EngineStatus) => {
+      if (next === activeStatus) return
+      const stamp = new Date().toISOString()
+      if (next === 'no-operation') {
+        // NO OPERATION enforces zero consumption: ROB stop = ROB start, rpm 0. The meter follows
+        // automatically through the reconciliation effect below (delta 0 ⇒ meter = previous).
+        // The watch window resets to the current wall-clock time with STOP pinned to START, so the
+        // duration is 0 by construction — both stay editable, see the keep-stop-matched effect.
+        const clock = currentClockTime()
+        onUpdate({
+          ...log,
+          timeStart: log.timeStart ?? stamp,
+          timeStop: stamp,
+          fuelRobStop: log.fuelRobStart,
+          rpm: 0,
+        })
+        setWatchStart(clock)
+        setWatchStop(clock)
+      } else if (next === 'operated') {
+        onUpdate({ ...log, timeStart: log.timeStart ?? stamp, timeStop: null })
+      } else onUpdate({ ...log, timeStart: null, timeStop: null })
+    },
+    [activeStatus, log, onUpdate, setWatchStart, setWatchStop],
+  )
 
-  const selectStatus = (next: EngineStatus) => {
-    // TODO: status should eventually drive form logic — e.g. selecting "STOPPED" could
-    // auto-fill the current meter reading to match the previous reading and disable the RPM input.
-    if (next === activeStatus) {
-      setStatusMenuOpen(false)
-      return
-    }
-    const now = new Date().toISOString()
-    if (next === 'running') onUpdate({ ...log, timeStart: log.timeStart ?? now, timeStop: null })
-    else if (next === 'stopped') onUpdate({ ...log, timeStart: log.timeStart ?? now, timeStop: now })
-    else onUpdate({ ...log, timeStart: null, timeStop: null })
-    setStatusMenuOpen(false)
-  }
+  // Single owner of meterCurrent: mirror the computed value into the store, which keeps the Review table
+  // and the PMS card in agreement. This doubles as the NO OPERATION lock (delta 0 ⇒ meter = previous).
+  // The equality guard makes it loop-free; review mode never writes.
+  useEffect(() => {
+    if (readOnly || derivedMeter === null) return
+    if (log.meterCurrent === derivedMeter) return
+    onUpdate({ ...log, meterCurrent: derivedMeter })
+  }, [derivedMeter, log, onUpdate, readOnly])
+
+  // While NO OPERATION, STOP always mirrors START (duration 0 by construction). The equality guard
+  // keeps it loop-free; it also repairs logs that open as NO OPERATION with an empty stop time.
+  useEffect(() => {
+    if (readOnly || !isNoOperation) return
+    if (watchStop === watchStart) return
+    setWatchStop(watchStart)
+  }, [isNoOperation, readOnly, watchStart, watchStop, setWatchStop])
 
   return (
     <section className="tech-panel" aria-label="Daily Engine Monitor">
@@ -206,106 +238,64 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
 
       <div className="grid gap-4 p-4 sm:p-5">
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="flex items-center gap-2">
-              <Clock size={16} className="text-[#ff4d2f]" aria-hidden="true" />
-              <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Watch Timeline</span>
-            </span>
-            <div className="relative" ref={statusMenuRef}>
-              <button
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={statusMenuOpen}
-                aria-label="Watch status"
-                onClick={() => setStatusMenuOpen((open) => !open)}
-                className={`inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[11px] font-bold uppercase tracking-wider ${activeStatusOption.border} ${activeStatusOption.bg} ${activeStatusOption.text}`}
-              >
-                <span className={`size-2 rounded-full ${isRunning ? 'animate-pulse bg-current' : 'bg-current opacity-50'}`} />
-                {activeStatusOption.label}
-                <ChevronDown
-                  size={13}
-                  className={`transition-transform duration-150 ${statusMenuOpen ? 'rotate-180' : ''}`}
+          <span className="flex items-center gap-2">
+            <Clock size={16} className="text-[#ff4d2f]" aria-hidden="true" />
+            <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Watch Timeline</span>
+          </span>
+
+          <div className="mt-3 flex flex-wrap items-end gap-4">
+            <label className="grid w-[240px] shrink-0 gap-1">
+              <span className={ROW_LABEL_CLS}>Engine Status</span>
+              <div className={`relative ${activeStatusOption.text}`}>
+                <span
+                  className={`pointer-events-none absolute left-3.5 top-1/2 size-3 -translate-y-1/2 rounded-full bg-current ${isRunning ? 'animate-pulse' : ''}`}
                   aria-hidden="true"
                 />
-              </button>
-              {statusMenuOpen && (
-                <ul
-                  role="listbox"
-                  aria-label="Watch status"
-                  className="absolute right-0 z-30 mt-1.5 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                <select
+                  aria-label="Engine status"
+                  value={activeStatus}
+                  disabled={readOnly}
+                  onChange={(event) => selectStatus(event.target.value as EngineStatus)}
+                  className={`${STATUS_SELECT_CLS} ${activeStatusOption.bg} ${activeStatusOption.text} ${activeStatusOption.edge} ${activeStatusOption.hover}`}
                 >
-                  {STATUS_OPTIONS.map((option) => {
-                    const isActive = option.id === activeStatus
-                    return (
-                      <li key={option.id}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={isActive}
-                          onClick={() => selectStatus(option.id)}
-                          className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wider hover:bg-slate-100 ${option.text}`}
-                        >
-                          <span className={`size-2 rounded-full bg-current ${isActive ? '' : 'opacity-40'}`} />
-                          <span className="flex-1">{option.label}</span>
-                          {isActive && <Check size={13} aria-hidden="true" />}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id} className={`${option.bg} ${option.text}`}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70" aria-hidden="true" />
+              </div>
+            </label>
+
+            <label className="grid gap-1">
+              <span className={ROW_LABEL_CLS}>Watch Start Time</span>
+              <input
+                type="time"
+                aria-label="Watch start time"
+                value={watchStart}
+                disabled={readOnly}
+                onChange={(event) => setWatchStart(event.target.value)}
+                className={TIME_INPUT_CLS}
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className={ROW_LABEL_CLS}>Watch Stop Time (Cut-off)</span>
+              <input
+                type="time"
+                aria-label="Watch stop time"
+                value={watchStop}
+                disabled={readOnly || isNoOperation}
+                onChange={(event) => setWatchStop(event.target.value)}
+                className={`${TIME_INPUT_CLS}${stopError && !watchStop ? ' border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
+              />
+              {stopError && !watchStop && (
+                <span className="text-[10px] font-bold text-red-600">A stop / cut-off time is required before review.</span>
               )}
-            </div>
+            </label>
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
-                <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
-                  {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                </span>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
-              <div className="mt-3 flex flex-1 flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <button
-                  type="button"
-                  aria-label="Decrease current meter reading"
-                  onClick={() => bumpMeter(-1)}
-                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-                >
-                  <Minus size={24} strokeWidth={3} />
-                </button>
-                <div className="flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200 p-3 focus-within:border-[#4b718f]">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    aria-label="Current meter reading"
-                    min={0}
-                    step={0.1}
-                    value={log.meterCurrent}
-                    onChange={(event) => {
-                      const next = Number(event.target.value)
-                      onUpdate({ ...log, meterCurrent: Number.isFinite(next) && next >= 0 ? next : 0 })
-                    }}
-                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
-                  />
-                  <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Increase current meter reading"
-                  onClick={() => bumpMeter(1)}
-                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-                >
-                  <Plus size={24} strokeWidth={3} />
-                </button>
-              </div>
-            </div>
-
             <div className="flex flex-col rounded-lg border border-[#a8d9bc] bg-green-50 p-3 text-green-800">
               <span className="text-[10px] font-bold uppercase tracking-[.08em]">Hours for this Watch</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-green-200 bg-white/60 px-1 py-1">
@@ -361,6 +351,32 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                 </div>
               </div>
             </div>
+
+            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Previous Meter Reading</span>
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+                <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
+                  {log.meterPrevious.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </span>
+                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
+              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">Current Meter Reading</span>
+              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-md border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  readOnly
+                  tabIndex={-1}
+                  aria-label="Current meter reading (auto-computed from watch times)"
+                  value={displayMeter.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  className="no-number-spinner w-full cursor-not-allowed bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none focus:outline-none"
+                />
+                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -381,11 +397,12 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                   step={1}
                   aria-label="ROB Start"
                   value={log.fuelRobStart}
+                  disabled={readOnly}
                   onChange={(event) => {
                     const next = Number(event.target.value)
                     onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
                   }}
-                  className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+                  className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 />
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
               </div>
@@ -398,7 +415,8 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                   type="button"
                   aria-label="Decrease ROB stop"
                   onClick={() => bumpRobStop(-1)}
-                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+                  disabled={isNoOperation || readOnly}
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Minus size={24} strokeWidth={3} />
                 </button>
@@ -410,11 +428,12 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                     step={10}
                     aria-label="ROB Stop"
                     value={log.fuelRobStop}
+                    disabled={isNoOperation || readOnly}
                     onChange={(event) => {
                       const next = Number(event.target.value)
                       onUpdate({ ...log, fuelRobStop: Number.isFinite(next) && next >= 0 ? next : 0 })
                     }}
-                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none"
+                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   />
                   <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
                 </div>
@@ -422,7 +441,8 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
                   type="button"
                   aria-label="Increase ROB stop"
                   onClick={() => bumpRobStop(1)}
-                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+                  disabled={isNoOperation || readOnly}
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus size={24} strokeWidth={3} />
                 </button>
@@ -445,9 +465,9 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate }: DailyE
             <span className="text-[13px] font-extrabold uppercase tracking-[.1em] text-[#152f48]">Engine Parameters</span>
           </span>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <MetricStepper label="RPM" unit="rev/min" value={log.rpm} min={0} max={1000} step={5} onChange={(rpm) => onUpdate({ ...log, rpm })} />
-            <MetricStepper label="Oil Pressure" unit="bar" value={log.oilPressure} min={0} max={8} step={0.1} decimals={1} onChange={(oilPressure) => onUpdate({ ...log, oilPressure })} />
-            <MetricStepper label="Water Temp" unit="°C" value={log.waterTemp} min={0} max={110} step={1} onChange={(waterTemp) => onUpdate({ ...log, waterTemp })} />
+            <MetricStepper label="RPM" unit="rev/min" value={log.rpm} min={0} max={1000} step={5} disabled={isNoOperation || readOnly} onChange={(rpm) => onUpdate({ ...log, rpm })} />
+            <MetricStepper label="Oil Pressure" unit="bar" value={log.oilPressure} min={0} max={8} step={0.1} decimals={1} disabled={readOnly} onChange={(oilPressure) => onUpdate({ ...log, oilPressure })} />
+            <MetricStepper label="Water Temp" unit="°C" value={log.waterTemp} min={0} max={110} step={1} disabled={readOnly} onChange={(waterTemp) => onUpdate({ ...log, waterTemp })} />
           </div>
         </div>
       </div>

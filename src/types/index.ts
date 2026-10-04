@@ -11,7 +11,7 @@ export interface NavigationGroup {
   items: NavigationItem[]
 }
 
-export type Department = 'marketing' | 'technical' | 'chief-engineer'
+export type Department = 'marketing' | 'technical' | 'chief-engineer' | 'duty-engineer'
 
 export interface DepartmentConfig {
   id: Department

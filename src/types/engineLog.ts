@@ -22,6 +22,8 @@ export interface EngineLog {
 
 export type WatchLogStatus = 'verified' | 'pending'
 
+export type WatchLogReviewStatus = 'draft' | 'pending' | 'approved' | 'returned'
+
 export interface WatchLogSummary {
   id: string
   date: string

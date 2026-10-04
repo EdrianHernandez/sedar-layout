@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ArrowRight, ChevronRight } from 'lucide-react'
 import type { WatchLogStatus, WatchLogSummary } from '../../types/engineLog'
 
@@ -17,6 +17,8 @@ const statusLabels: Record<WatchLogStatus, string> = {
 }
 
 export function RecentWatchLogsCard({ logs }: RecentWatchLogsCardProps) {
+  const location = useLocation()
+  const base = location.pathname.startsWith('/duty-engineer') ? '/duty-engineer' : '/chief-engineer'
   return (
     <section
       aria-labelledby="recent-watch-logs-title"
@@ -31,7 +33,7 @@ export function RecentWatchLogsCard({ logs }: RecentWatchLogsCardProps) {
             {logs.length} entries
           </span>
           <Link
-            to="/chief-engineer/monitoring/history"
+            to={`${base}/monitoring/history`}
             className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:text-white"
           >
             View all
@@ -44,7 +46,7 @@ export function RecentWatchLogsCard({ logs }: RecentWatchLogsCardProps) {
         {logs.map((log) => (
           <li key={log.id}>
             <Link
-              to="/chief-engineer/monitoring"
+              to={`${base}/monitoring`}
               className="group flex items-center gap-3 rounded-md px-2 py-3.5 transition hover:bg-slate-800 active:bg-slate-700"
             >
               <div className="min-w-0 flex-1">
