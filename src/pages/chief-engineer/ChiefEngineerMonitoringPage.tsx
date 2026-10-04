@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, CircleCheckBig, Eye, Loader2, Printer, Send, Undo2 } from 'lucide-react'
+import { ArrowLeft, CircleCheckBig, Eye, Loader2, Send, Undo2 } from 'lucide-react'
 import { DailyEngineMonitorCard } from '../../components/chief-engineer/DailyEngineMonitorCard'
 import { DailyLogSummary } from '../../components/chief-engineer/DailyLogSummary'
 import { consoleTitle } from '../../data/chiefEngineerMockData'
@@ -190,16 +190,6 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           </p>
         </div>
         <div className="tech-header-actions">
-          {/* TODO: generates an auto-filled physical watch log form based on the current state data. */}
-          <button
-            type="button"
-            className="button button-secondary button-lg"
-            title="Generates an auto-filled physical form from the current state data"
-            onClick={() => notify('Print Watch Log will be implemented later.')}
-          >
-            <Printer size={15} aria-hidden="true" /> PRINT WATCH LOG
-          </button>
-
           {primaryAction}
         </div>
       </div>
