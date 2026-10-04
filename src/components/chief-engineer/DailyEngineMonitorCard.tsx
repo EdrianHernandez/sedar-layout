@@ -169,12 +169,15 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
   const pmsTone: PmsTone = pmsRemaining < 10 ? 'critical' : pmsRemaining < 50 ? 'warning' : 'normal'
   const tone = PMS_TONES[pmsTone]
 
+  // Invariant: ROB Start ≥ ROB Stop, so Fuel Consumed (start − stop) can never go negative.
+  // Enforced by the bumpers clamping within the opposite bound, the stop input clamping on every
+  // keystroke, and blur correction on both inputs (start is typed freely, then floored to stop).
   const bumpRobStart = (direction: 1 | -1) => {
-    onUpdate({ ...log, fuelRobStart: clamp(log.fuelRobStart + 10 * direction, 0, 999999) })
+    onUpdate({ ...log, fuelRobStart: clamp(log.fuelRobStart + 10 * direction, log.fuelRobStop, 999999) })
   }
 
   const bumpRobStop = (direction: 1 | -1) => {
-    onUpdate({ ...log, fuelRobStop: clamp(log.fuelRobStop + 10 * direction, 0, 999999) })
+    onUpdate({ ...log, fuelRobStop: clamp(log.fuelRobStop + 10 * direction, 0, log.fuelRobStart) })
   }
 
   const selectStatus = useCallback(
@@ -467,7 +470,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   <input
                     type="number"
                     inputMode="numeric"
-                    min={0}
+                    min={log.fuelRobStop}
                     step={10}
                     aria-label="ROB Start"
                     value={log.fuelRobStart}
@@ -475,6 +478,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                     onChange={(event) => {
                       const next = Number(event.target.value)
                       onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
+                    }}
+                    onBlur={() => {
+                      if (log.fuelRobStart < log.fuelRobStop) onUpdate({ ...log, fuelRobStart: log.fuelRobStop })
                     }}
                     className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   />
@@ -509,13 +515,18 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                     type="number"
                     inputMode="numeric"
                     min={0}
+                    max={log.fuelRobStart}
                     step={10}
                     aria-label="ROB Stop"
                     value={log.fuelRobStop}
                     disabled={isNoOperation || readOnly}
                     onChange={(event) => {
                       const next = Number(event.target.value)
-                      onUpdate({ ...log, fuelRobStop: Number.isFinite(next) && next >= 0 ? next : 0 })
+                      // Locked as you type: stop can never exceed the current start.
+                      onUpdate({ ...log, fuelRobStop: Number.isFinite(next) && next >= 0 ? Math.min(next, log.fuelRobStart) : 0 })
+                    }}
+                    onBlur={() => {
+                      if (log.fuelRobStop > log.fuelRobStart) onUpdate({ ...log, fuelRobStop: log.fuelRobStart })
                     }}
                     className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   />
