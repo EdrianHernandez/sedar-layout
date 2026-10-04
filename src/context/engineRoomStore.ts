@@ -3,10 +3,13 @@ import type { EngineLog, WatchLogReviewStatus } from '../types/engineLog'
 import type { PMSChecklist } from '../types/pmsChecklist'
 import type { Vessel } from '../types/vessel'
 
-export type EngineRole = 'Duty Engineer' | 'Chief Engineer'
+export interface WatchLogSignoff {
+  preparedBy: string
+  verifiedBy: string
+  signedAt: string
+}
 
 export interface EngineRoomContextValue {
-  currentRole: EngineRole
   reviewStatus: WatchLogReviewStatus
   setReviewStatus: (status: WatchLogReviewStatus) => void
   watchStart: string
@@ -25,6 +28,8 @@ export interface EngineRoomContextValue {
   updateLog: (updated: EngineLog) => void
   toggleTask: (checklistId: string, taskId: string) => void
   saveRemark: (checklistId: string, taskId: string, remark: string, hasPhoto: boolean) => void
+  signoff: WatchLogSignoff | null
+  setSignoff: (signoff: WatchLogSignoff) => void
 }
 
 export const EngineRoomContext = createContext<EngineRoomContextValue | null>(null)

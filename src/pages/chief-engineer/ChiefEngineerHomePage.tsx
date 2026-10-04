@@ -1,8 +1,7 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ArrowRight, ClipboardCheck, Clock3, Fuel, Gauge, Wrench } from 'lucide-react'
 import { RecentWatchLogsCard } from '../../components/chief-engineer/RecentWatchLogsCard'
 import { recentWatchLogs } from '../../data/chiefEngineerMockData'
-import { useEngineRoom } from '../../context/engineRoomStore'
 import { useChiefEngineer } from './chiefEngineerOutlet'
 import { computeRunningHours, formatRunningHours } from '../../utils/engineLog'
 
@@ -14,9 +13,7 @@ const summaryCards = [
 
 export function ChiefEngineerHomePage() {
   const { now, logs, checklists } = useChiefEngineer()
-  const { currentRole } = useEngineRoom()
-  const location = useLocation()
-  const base = location.pathname.startsWith('/duty-engineer') ? '/duty-engineer' : '/chief-engineer'
+  const base = '/chief-engineer'
 
   const runningLog = logs.find((log) => log.timeStart && !log.timeStop) ?? logs[0]
   const runningHours = computeRunningHours(runningLog, now)
@@ -49,7 +46,7 @@ export function ChiefEngineerHomePage() {
         })}
       </div>
 
-      <div className={`grid gap-4 ${currentRole === 'Chief Engineer' ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+      <div className="grid gap-4 md:grid-cols-2">
         <Link to={`${base}/monitoring`} className="tech-panel chief-entry-tile chief-entry-filled group flex min-h-[200px] flex-col p-6">
           <span className="grid size-12 place-items-center rounded-[10px] bg-white/10 text-white">
             <Gauge size={24} aria-hidden="true" />
@@ -64,21 +61,19 @@ export function ChiefEngineerHomePage() {
           </span>
         </Link>
 
-        {currentRole === 'Chief Engineer' && (
-          <Link to={`${base}/pms`} className="tech-panel chief-entry-tile chief-entry-filled group flex min-h-[200px] flex-col p-6">
-            <span className="grid size-12 place-items-center rounded-[10px] bg-white/10 text-white">
-              <ClipboardCheck size={24} aria-hidden="true" />
-            </span>
-            <h3 className="mt-4 text-lg font-bold text-white">PMS Checklist</h3>
-            <p className="mt-2 text-sm leading-relaxed text-white/75">
-              Work through planned maintenance intervals (250H–6000H) with blocky task toggles, progress tracking and defect remarks.
-            </p>
-            <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-white">
-              Open module
-              <ArrowRight size={15} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
-            </span>
-          </Link>
-        )}
+        <Link to={`${base}/pms`} className="tech-panel chief-entry-tile chief-entry-filled group flex min-h-[200px] flex-col p-6">
+          <span className="grid size-12 place-items-center rounded-[10px] bg-white/10 text-white">
+            <ClipboardCheck size={24} aria-hidden="true" />
+          </span>
+          <h3 className="mt-4 text-lg font-bold text-white">PMS Checklist</h3>
+          <p className="mt-2 text-sm leading-relaxed text-white/75">
+            Work through planned maintenance intervals (250H–6000H) with blocky task toggles, progress tracking and defect remarks.
+          </p>
+          <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-white">
+            Open module
+            <ArrowRight size={15} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
       </div>
 
       <RecentWatchLogsCard logs={recentWatchLogs} />

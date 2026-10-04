@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, CircleCheckBig, Eye, Loader2, Send, Undo2 } from 'lucide-react'
+import { ArrowLeft, CircleCheckBig, Eye, FileSignature, Loader2, Undo2 } from 'lucide-react'
 import { DailyEngineMonitorCard } from '../../components/chief-engineer/DailyEngineMonitorCard'
 import { DailyLogSummary } from '../../components/chief-engineer/DailyLogSummary'
-import { consoleTitle, masterRobByVessel, type MonitorTabId } from '../../data/chiefEngineerMockData'
-import { useEngineRoom, type EngineRole } from '../../context/engineRoomStore'
+import { WatchLogSignoffModal } from '../../components/chief-engineer/WatchLogSignoffModal'
+import { consoleTitle, crewByVessel, masterRobByVessel, type MonitorTabId } from '../../data/chiefEngineerMockData'
+import { useEngineRoom } from '../../context/engineRoomStore'
 import type { WatchLogReviewStatus } from '../../types/engineLog'
 import { useChiefEngineer } from './chiefEngineerOutlet'
 
 interface ChiefEngineerMonitoringPageProps {
-  currentRole: EngineRole
   reviewStatus: WatchLogReviewStatus
   onReviewStatusChange: (status: WatchLogReviewStatus) => void
 }
@@ -17,12 +17,13 @@ type ViewMode = 'edit' | 'review'
 
 const DISABLED_CLS = 'disabled:cursor-not-allowed disabled:opacity-60'
 
-export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onReviewStatusChange }: ChiefEngineerMonitoringPageProps) {
+export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange }: ChiefEngineerMonitoringPageProps) {
   const { activeVessel, logs, updateLog, notify, now } = useChiefEngineer()
-  const { watchStop, hydraulicOilAdded } = useEngineRoom()
+  const { watchStop, hydraulicOilAdded, signoff, setSignoff } = useEngineRoom()
   const [activeTab, setActiveTab] = useState<MonitorTabId>('ME-PORT')
   const [isWorking, setIsWorking] = useState(false)
   const [stopError, setStopError] = useState(false)
+  const [signoffOpen, setSignoffOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(() => (reviewStatus === 'approved' ? 'review' : 'edit'))
   const timersRef = useRef<number[]>([])
   const log = (activeTab === 'VESSEL-FLUIDS' ? null : logs.find((item) => item.engineId === activeTab)) ?? logs[0]
@@ -48,7 +49,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
   }
 
   // Validation gate: an open-ended log cannot enter Review mode — WATCH STOP (cut-off) is mandatory.
-  // TODO (cross-check): flag when (watchStop − watchStart) does not roughly match "Total Running Hours".
+  // Entering the review immediately raises the kiosk Sign-off modal (Prepared / Verified / PIN).
   const handleReview = () => {
     if (!watchStop) {
       setStopError(true)
@@ -57,19 +58,19 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
     }
     setStopError(false)
     setViewMode('review')
+    setSignoffOpen(true)
   }
 
-  const handleConfirmAndSubmit = () => {
-    if (!watchStop) {
-      setStopError(true)
-      setViewMode('edit')
-      notify('Stop (cut-off) time is required before submitting the log.')
-      return
-    }
-    runAction('pending', 'Watch log submitted to Chief Engineer for approval.', () => setViewMode('edit'))
+  // The modal's SUBMIT & LOCK is the single final action: it records the sign-off pair,
+  // then locks the log straight to its approved state (no duty→chief hand-off).
+  const handleSignoff = (preparedBy: string) => {
+    if (isWorking) return
+    const crew = crewByVessel[activeVessel.id]
+    setSignoffOpen(false)
+    setSignoff({ preparedBy, verifiedBy: crew.chiefEngineer, signedAt: new Date().toISOString() })
+    runAction('approved', `Watch log signed by ${preparedBy}, verified by ${crew.chiefEngineer}, and locked.`)
   }
 
-  const isChief = currentRole === 'Chief Engineer'
   const isReadOnly = reviewStatus === 'pending' || reviewStatus === 'approved'
   // Approved logs always open the review view (A4 print prep), no matter what mode was stored.
   const isReviewing = viewMode === 'review' || reviewStatus === 'approved'
@@ -77,9 +78,9 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
 
   let primaryAction: React.ReactNode
   if (isReviewing) {
-    // TODO (Print layout): "APPROVE, SAVE & PRINT" (and viewing an approved log) should render
-    // DailyLogSummary as a printable A4 sheet with signature blocks at the bottom:
-    // Prepared by: [Name], Approved by: [Name]. See the comment inside DailyLogSummary.
+    // TODO (Print layout): viewing an approved log should render DailyLogSummary as a printable
+    // A4 sheet; the Prepared By / Verified By strip at its foot is populated from the sign-off
+    // recorded by the Sign-off modal. See the comment inside DailyLogSummary.
     primaryAction = (
       <>
         {reviewStatus !== 'approved' && (
@@ -92,30 +93,17 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
             <ArrowLeft size={15} aria-hidden="true" /> BACK TO EDIT
           </button>
         )}
-        {isEditable && isChief && (
+        {isEditable && (
           <button
             type="button"
-            onClick={() => runAction('approved', 'Watch log approved and saved for print.')}
+            onClick={() => setSignoffOpen(true)}
             disabled={isWorking}
             aria-live="polite"
-            title="Approve, save and prepare the watch log for printing"
-            className={`button button-success button-lg ${DISABLED_CLS} ${isWorking ? 'cursor-wait opacity-80' : ''}`}
-          >
-            {isWorking ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <CircleCheckBig size={15} strokeWidth={2.5} aria-hidden="true" />}
-            {isWorking ? 'APPROVING…' : 'APPROVE, SAVE & PRINT'}
-          </button>
-        )}
-        {isEditable && !isChief && (
-          <button
-            type="button"
-            onClick={handleConfirmAndSubmit}
-            disabled={isWorking}
-            aria-live="polite"
-            title="Confirm this log and submit it to the Chief Engineer"
+            title="Open the sign-off sheet (prepared by, verified by, chief PIN) and lock the log"
             className={`button button-primary button-lg ${DISABLED_CLS} ${isWorking ? 'cursor-wait opacity-80' : ''}`}
           >
-            {isWorking ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Send size={15} strokeWidth={2.5} aria-hidden="true" />}
-            {isWorking ? 'SUBMITTING…' : 'CONFIRM & SUBMIT TO CHIEF'}
+            {isWorking ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <FileSignature size={15} strokeWidth={2.5} aria-hidden="true" />}
+            {isWorking ? 'LOCKING…' : 'SIGN OFF & SUBMIT'}
           </button>
         )}
         {reviewStatus === 'approved' && (
@@ -130,15 +118,15 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
       <button
         type="button"
         onClick={handleReview}
-        title="Review all entries before final submission"
+        title="Review all entries and open the sign-off sheet before final submission"
         className="button button-review button-lg"
       >
         <Eye size={15} aria-hidden="true" /> REVIEW LOG
       </button>
     )
-  } else if (isChief && reviewStatus === 'pending') {
-    // Pending review (Chief Engineer): a Duty Engineer submitted this log (status 'pending'),
-    // so the Chief reviews the read-only data and either approves it or returns it for correction.
+  } else if (reviewStatus === 'pending') {
+    // Dormant legacy branch: nothing sets 'pending' in the kiosk flow, but approve/return
+    // remains available should a log land in the pending state (e.g. from imported data).
     primaryAction = (
       <>
         <button
@@ -146,7 +134,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           onClick={() => runAction('approved', 'Watch log approved.')}
           disabled={isWorking}
           aria-live="polite"
-          title="Approve the watch log submitted by the Duty Engineer"
+          title="Approve the signed watch log"
           className={`button button-success button-lg ${DISABLED_CLS}`}
         >
           <CircleCheckBig size={15} strokeWidth={2.5} aria-hidden="true" /> APPROVE
@@ -156,18 +144,12 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           onClick={() => runAction('returned', 'Watch log returned for correction.')}
           disabled={isWorking}
           aria-live="polite"
-          title="Return the log to the Duty Engineer for correction"
+          title="Return the watch log for correction"
           className={`button button-danger-outline button-lg ${DISABLED_CLS}`}
         >
           <Undo2 size={15} strokeWidth={2.5} aria-hidden="true" /> RETURN FOR CORRECTION
         </button>
       </>
-    )
-  } else if (reviewStatus === 'pending') {
-    primaryAction = (
-      <button type="button" disabled className={`button button-primary button-lg ${DISABLED_CLS}`} aria-live="polite">
-        <CircleCheckBig size={15} strokeWidth={2.5} aria-hidden="true" /> SUBMITTED ✓
-      </button>
     )
   } else {
     primaryAction = (
@@ -182,7 +164,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
       <div className="tech-dashboard-header tech-header-centered sticky top-0 z-20 bg-white">
         <div className="tech-header-text">
           <span className="tech-header-kicker">
-            {consoleTitle} · {currentRole} · {isReviewing ? 'Review & Confirmation' : 'Daily Operations'}
+            {consoleTitle} · Shared Vessel Account · {isReviewing ? 'Review & Confirmation' : 'Daily Operations'}
           </span>
           <h1>{isReviewing ? 'Review & Confirmation' : 'Daily Engine Monitoring'}</h1>
           <p>
@@ -207,6 +189,7 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           logs={logs}
           hydraulicOilAdded={hydraulicOilAdded}
           masterRob={masterRobByVessel[activeVessel.id]}
+          signoff={signoff}
         />
       ) : (
         <DailyEngineMonitorCard
@@ -217,6 +200,10 @@ export function ChiefEngineerMonitoringPage({ currentRole, reviewStatus, onRevie
           readOnly={isReadOnly}
           stopError={stopError}
         />
+      )}
+
+      {signoffOpen && (
+        <WatchLogSignoffModal onClose={() => setSignoffOpen(false)} onSubmit={handleSignoff} />
       )}
     </>
   )

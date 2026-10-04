@@ -1,11 +1,13 @@
 import type { EngineLog } from '../../types/engineLog'
 import type { MasterRob } from '../../data/chiefEngineerMockData'
+import type { WatchLogSignoff } from '../../context/engineRoomStore'
 import { computeRunningHours, formatTimeOnly } from '../../utils/engineLog'
 
 interface DailyLogSummaryProps {
   logs: EngineLog[]
   hydraulicOilAdded: number
   masterRob: MasterRob
+  signoff?: WatchLogSignoff | null
 }
 
 interface LogTotals {
@@ -134,7 +136,7 @@ function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
   )
 }
 
-export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob }: DailyLogSummaryProps) {
+export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob, signoff = null }: DailyLogSummaryProps) {
   const mainLogs = logs.filter((log) => log.engineClass === 'main')
   const generatorLogs = logs.filter((log) => log.engineClass === 'auxiliary')
   const mainTotals = sumOf(mainLogs)
@@ -153,9 +155,9 @@ export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob }: DailyLog
 
   return (
     <section aria-label="Watch log review summary" className="overflow-hidden rounded-[10px] border border-slate-200 bg-white">
-      {/* TODO (Print layout): when the Chief clicks "APPROVE, SAVE & PRINT" — or when viewing an approved log —
-          format this review view as a printable A4 sheet with signature blocks at the bottom:
-          Prepared by: [Name], Approved by: [Name]. */}
+      {/* TODO (Print layout): format this review view as a printable A4 sheet. The Prepared By /
+          Verified By strip at the foot is filled from the Sign-off modal's kiosk record
+          (prepared by duty engineer, verified by the vessel's chief, PIN-authorized). */}
 
       <h3 className="px-5 pt-5 text-sm font-semibold text-slate-700">Main Engines</h3>
       <div className="mt-3">
@@ -217,6 +219,30 @@ export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob }: DailyLog
           </table>
         </div>
       </div>
+
+      {signoff && (
+        <div className="grid gap-4 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[.1em] text-slate-500">Prepared By</span>
+            <strong className="mt-1 block text-sm font-bold text-slate-800">{signoff.preparedBy}</strong>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[.1em] text-slate-500">Verified By</span>
+            <strong className="mt-1 block text-sm font-bold text-slate-800">{signoff.verifiedBy}</strong>
+            <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">
+              Signed{' '}
+              {new Date(signoff.signedAt).toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })}
+            </span>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

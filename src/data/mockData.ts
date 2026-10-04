@@ -24,8 +24,7 @@ import type { DepartmentConfig, Metric, NavigationGroup } from '../types'
 export const departments: DepartmentConfig[] = [
   { id: 'marketing', label: 'Marketing', sublabel: 'Marketing ERP', routePrefix: '/marketing', defaultPath: '/marketing/dashboard' },
   { id: 'technical', label: 'Technical', sublabel: 'Technical & Maintenance', routePrefix: '/technical', defaultPath: '/technical/dashboard' },
-  { id: 'chief-engineer', label: 'Chief Engineer', sublabel: 'Engine Room Console', routePrefix: '/chief-engineer', defaultPath: '/chief-engineer' },
-  { id: 'duty-engineer', label: 'Duty Engineer', sublabel: 'Engine Room Console', routePrefix: '/duty-engineer', defaultPath: '/duty-engineer' },
+  { id: 'chief-engineer', label: 'Engine Room Console', sublabel: 'Shared Vessel Account', routePrefix: '/chief-engineer', defaultPath: '/chief-engineer' },
 ]
 
 export const marketingNavigationGroups: NavigationGroup[] = [
@@ -127,27 +126,6 @@ export const chiefEngineerNavigationGroups: NavigationGroup[] = [
       { label: 'PMS History: Main Engine', path: '/chief-engineer/pms/history/main-engine', icon: Cog },
       { label: 'PMS History: Transmission', path: '/chief-engineer/pms/history/transmission', icon: Settings2 },
       { label: 'PMS History: Generator', path: '/chief-engineer/pms/history/generator', icon: Zap },
-    ],
-  },
-]
-
-export const dutyEngineerNavigationGroups: NavigationGroup[] = [
-  {
-    label: 'Overview',
-    items: [
-      { label: 'Dashboard', path: '/duty-engineer', icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: 'Active Operations',
-    items: [
-      { label: 'Daily Engine Log', path: '/duty-engineer/monitoring', icon: Gauge },
-    ],
-  },
-  {
-    label: 'History & Records',
-    items: [
-      { label: 'Daily Logs History', path: '/duty-engineer/monitoring/history', icon: History },
     ],
   },
 ]

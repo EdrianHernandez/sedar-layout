@@ -12,6 +12,32 @@ export const defaultVesselId = assignedVessels[0].id
 
 export const consoleTitle = 'Engine Room Console'
 
+// Kiosk crew roster: each vessel's isolated database carries its own duty engineers,
+// designated chief engineer, and the chief's 4-digit authorisation PIN for SUBMIT & LOCK.
+export interface VesselCrew {
+  chiefEngineer: string
+  chiefPin: string
+  dutyEngineers: string[]
+}
+
+export const crewByVessel: Record<string, VesselCrew> = {
+  'sedar-6': {
+    chiefEngineer: 'Engr. Ramon Dela Cruz',
+    chiefPin: '4821',
+    dutyEngineers: ['Engr. Paolo Mabini', 'Engr. Jonas Reyes', 'Engr. Elmer Santos'],
+  },
+  'sedar-8': {
+    chiefEngineer: 'Engr. Arturo Villanueva',
+    chiefPin: '7390',
+    dutyEngineers: ['Engr. Mark Anthony Lopez', 'Engr. Christian Aguilar'],
+  },
+  'sedar-12': {
+    chiefEngineer: 'Engr. Nestor Baltazar',
+    chiefPin: '2654',
+    dutyEngineers: ['Engr. Ivan Cortez', 'Engr. Rafael Dimaculangan'],
+  },
+}
+
 // Engine tabs plus the vessel-level fluids tab (not tied to any single engine).
 export type MonitorTabId = EngineId | 'VESSEL-FLUIDS'
 

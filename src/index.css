@@ -1700,6 +1700,37 @@ td { border-top: 1px solid #e2e2e2; }
 
 .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #152f48; }
 
+/* Kiosk sign-off modal: REVIEW LOG → PREPARED BY / VERIFIED BY / chief PIN → SUBMIT & LOCK. */
+.signoff-dialog { width: min(440px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 2px solid #152f48; border-radius: 12px; background: #fff; box-shadow: 0 24px 60px rgba(3, 15, 29, .35); }
+.signoff-header { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #e4eaee; background: #f7f9fb; border-radius: 10px 10px 0 0; }
+.signoff-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 8px; color: #315d82; background: #e8eef4; }
+.signoff-header h2 { margin: 0; color: #152f48; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.signoff-header p { margin: 3px 0 0; color: #7c8994; font-size: 11px; font-weight: 700; }
+.signoff-close { margin-left: auto; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #d4dce2; border-radius: 6px; background: #fff; color: #5f6873; cursor: pointer; transition: background .15s; }
+.signoff-close:hover { background: #eef2f6; }
+.signoff-body { display: grid; gap: 16px; padding: 18px; }
+.signoff-field { display: grid; gap: 6px; }
+.signoff-field > span:first-child { color: #5f6873; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.signoff-field > span em { color: #e36b4b; font-style: normal; }
+.signoff-control { height: 44px; border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; padding: 0 12px; color: #111820; font-size: 14px; font-weight: 700; outline: none; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.signoff-control:focus { border-color: #315d82; box-shadow: 0 0 0 2px rgba(49, 93, 130, .15); }
+.signoff-readonly { position: relative; display: flex; align-items: center; }
+.signoff-readonly svg { position: absolute; left: 12px; color: #7c8994; pointer-events: none; }
+.signoff-readonly input { width: 100%; height: 44px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 0 12px 0 34px; color: #44546a; font-size: 14px; font-weight: 700; cursor: not-allowed; }
+.signoff-pin { position: relative; display: flex; gap: 10px; cursor: text; }
+.signoff-pin-box { display: grid; place-items: center; width: 46px; height: 52px; border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; color: #152f48; font-size: 22px; font-weight: 900; line-height: 1; transition: border-color .15s, box-shadow .15s; }
+.signoff-pin:focus-within .signoff-pin-box { border-color: #315d82; box-shadow: 0 0 0 2px rgba(49, 93, 130, .15); }
+.signoff-pin-input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; opacity: 0; font-size: 16px; cursor: text; }
+.signoff-hint { color: #9aa7b1; font-size: 10px; font-weight: 700; }
+.signoff-error { color: #dc2626; font-size: 11px; font-weight: 700; }
+.signoff-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid #e4eaee; background: #f7f9fb; border-radius: 0 0 10px 10px; }
+@media (max-width: 480px) {
+  .signoff-pin-box { width: 40px; height: 46px; }
+  .signoff-actions { flex-direction: column-reverse; }
+  .signoff-actions .button { width: 100%; }
+}
+
+
 .tech-table-scroll { overflow-x: auto; }
 .tech-table { width: 100%; min-width: 600px; border-collapse: collapse; }
 .tech-table th { height: 37px; padding: 0 14px; color: #5d6872; background: #fafafa; font-size: 8px; font-weight: 700; text-align: left; text-transform: uppercase; }

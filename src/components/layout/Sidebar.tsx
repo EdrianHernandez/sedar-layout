@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PanelLeft, X, Check, ChevronUp } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { departments, marketingNavigationGroups, technicalNavigationGroups, chiefEngineerNavigationGroups, dutyEngineerNavigationGroups } from '../../data/mockData'
+import { departments, marketingNavigationGroups, technicalNavigationGroups, chiefEngineerNavigationGroups } from '../../data/mockData'
 import type { Department, NavigationGroup } from '../../types'
+import { useEngineRoom } from '../../context/engineRoomStore'
 
 interface SidebarProps {
   department: Department
@@ -19,13 +20,14 @@ const navigationByDepartment: Record<Department, NavigationGroup[]> = {
   marketing: marketingNavigationGroups,
   technical: technicalNavigationGroups,
   'chief-engineer': chiefEngineerNavigationGroups,
-  'duty-engineer': dutyEngineerNavigationGroups,
 }
 
 export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, onDesktopClose, onMobileClose, onNavigate, onDepartmentChange }: SidebarProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const switcherRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  // Kiosk account: the console option and footer are tied to the vessel the console is signed into.
+  const { activeVessel } = useEngineRoom()
   const config = departments.find((d) => d.id === department)!
   const groups = navigationByDepartment[department]
 
@@ -83,7 +85,7 @@ export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, on
                 <ul className="nav-list">
                   {group.items.map(({ label, path, icon: Icon }) => (
                     <li key={path}>
-                      <NavLink to={path} end={path === `/${department}/dashboard` || path.startsWith('/chief-engineer') || path.startsWith('/duty-engineer')} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
+                      <NavLink to={path} end={path === `/${department}/dashboard` || path.startsWith('/chief-engineer')} className={({ isActive }) => isActive ? 'sidebar-link active' : 'sidebar-link'} aria-label={label} title={desktopOpen ? undefined : label} onClick={() => handleNavigate(label)}>
                         <Icon aria-hidden="true" size={16} />
                         <span>{label}</span>
                       </NavLink>
@@ -99,7 +101,7 @@ export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, on
             <div className="footer-avatar" role="img" aria-label={`${config.label} department`}>S</div>
             <div className="footer-department-info">
               <strong>SEDAR MVP</strong>
-              <span>{config.sublabel}</span>
+              <span>{department === 'chief-engineer' ? activeVessel.name : config.sublabel}</span>
             </div>
             <ChevronUp size={14} className={`footer-chevron${switcherOpen ? ' rotated' : ''}`} />
           </button>
@@ -117,7 +119,7 @@ export function Sidebar({ department, desktopOpen, mobileOpen, onDesktopOpen, on
                   <span className="switcher-check">{dept.id === department && <Check size={13} />}</span>
                   <div className="switcher-option-text">
                     <strong>{dept.label}</strong>
-                    <span>{dept.sublabel}</span>
+                    <span>{dept.id === 'chief-engineer' ? activeVessel.name : dept.sublabel}</span>
                   </div>
                 </button>
               ))}

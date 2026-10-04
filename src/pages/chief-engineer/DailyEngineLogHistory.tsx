@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ChevronRight, History } from 'lucide-react'
 import { watchLogHistory } from '../../data/chiefEngineerMockData'
 import type { WatchLogStatus } from '../../types/engineLog'
@@ -27,8 +27,7 @@ const LABEL_CLS = 'text-xs font-semibold uppercase tracking-wider text-slate-500
 export function DailyEngineLogHistory() {
   const { activeVessel } = useChiefEngineer()
   const navigate = useNavigate()
-  const location = useLocation()
-  const base = location.pathname.startsWith('/duty-engineer') ? '/duty-engineer' : '/chief-engineer'
+  const base = '/chief-engineer'
 
   const [searchQuery, setSearchQuery] = useState('')
   const [dateFilter, setDateFilter] = useState('')

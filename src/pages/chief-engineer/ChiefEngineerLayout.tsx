@@ -37,7 +37,7 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
   }
 
   const path = location.pathname.replace(/\/+$/, '')
-  const onHome = path === '/chief-engineer' || path === '/duty-engineer'
+  const onHome = path === '/chief-engineer'
   const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
   const timeLabel = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 

@@ -28,8 +28,9 @@ import { useEngineRoom } from './context/engineRoomStore'
 import type { Department } from './types'
 
 function getDepartmentFromPath(pathname: string): Department {
-  if (pathname.startsWith('/chief-engineer')) return 'chief-engineer'
-  if (pathname.startsWith('/duty-engineer')) return 'duty-engineer'
+  // /duty-engineer is a legacy alias — it maps to the console and redirects (see routes below),
+  // so the sidebar never flashes the wrong department while the redirect settles.
+  if (pathname.startsWith('/chief-engineer') || pathname.startsWith('/duty-engineer')) return 'chief-engineer'
   if (pathname.startsWith('/technical')) return 'technical'
   return 'marketing'
 }
@@ -37,7 +38,7 @@ function getDepartmentFromPath(pathname: string): Department {
 export default function App() {
   const location = useLocation()
   const department = getDepartmentFromPath(location.pathname)
-  const { currentRole, reviewStatus, setReviewStatus } = useEngineRoom()
+  const { reviewStatus, setReviewStatus } = useEngineRoom()
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('sedar-marketing-sidebar-collapsed') !== 'true')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [toast, setToast] = useState('')
@@ -113,7 +114,6 @@ export default function App() {
             path="monitoring"
             element={
               <ChiefEngineerMonitoringPage
-                currentRole={currentRole}
                 reviewStatus={reviewStatus}
                 onReviewStatusChange={setReviewStatus}
               />
@@ -125,20 +125,7 @@ export default function App() {
           <Route path="pms/history/transmission" element={<ChiefEngineerPmsHistoryPage scope="Transmission" />} />
           <Route path="pms/history/generator" element={<ChiefEngineerPmsHistoryPage scope="Generator" />} />
         </Route>
-        <Route path="/duty-engineer" element={<ChiefEngineerLayout onNotify={notify} />}>
-          <Route index element={<ChiefEngineerHomePage />} />
-          <Route
-            path="monitoring"
-            element={
-              <ChiefEngineerMonitoringPage
-                currentRole={currentRole}
-                reviewStatus={reviewStatus}
-                onReviewStatusChange={setReviewStatus}
-              />
-            }
-          />
-          <Route path="monitoring/history" element={<DailyEngineLogHistory />} />
-        </Route>
+        <Route path="/duty-engineer/*" element={<Navigate to="/chief-engineer" replace />} />
         <Route path="*" element={<Navigate to="/marketing/dashboard" replace />} />
       </Routes>
       {toast && <Toast message={toast} onClose={() => setToast('')} />}
