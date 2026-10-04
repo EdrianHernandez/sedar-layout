@@ -184,7 +184,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
       if (next === 'no-operation') {
         // Explicitly switching to NO OPERATION zeroes consumption once: R.O.B. stop = start,
         // rpm 0. The meter follows automatically through the reconciliation effect below
-        // (delta 0 ⇒ meter = previous). No auto-sync afterwards, so seeded/recorded stop < start
+        // (delta 0 ⇒ meter = previous). No auto-sync afterwards, so recorded stop < start
         // values survive — only a fresh status selection resets them.
         // The watch window resets to the current wall-clock time with STOP pinned to START, so the
         // duration is 0 by construction — both stay editable, see the keep-stop-matched effect.
@@ -208,7 +208,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
   // Single owner of the auto-derived fields: mirror the computed meter so the Review table and
   // the PMS card stay in agreement. R.O.B. stop is NOT reconciled here — it is reset to start
   // only when the user explicitly picks NO OPERATION in selectStatus, so recorded service-tank
-  // consumption (stop < start) persists for normal and seeded logs.
+  // consumption (stop < start) persists for logs recorded during the watch.
   // One effect (not two) so two onUpdate calls can never clobber each other's {...log} snapshot.
   // Equality guards make it loop-free; review mode never writes.
   useEffect(() => {

@@ -83,12 +83,13 @@ interface LogSeed {
 // Distinct per-engine windows demonstrate that TIME START / TIME STOP are independent per row
 // (not one global watch window); GEN 2 stays standby (null / null → "—" cells).
 // R.O.B. figures reflect the Service Tank (Day Tank) feeding each engine — the Daily Engine
-// Monitoring form tracks day-tank refills, not master/bunker storage (that lives in the
-// masterRobByVessel ledger below).
+// Monitoring form tracks day-tank levels, not master/bunker storage (that lives in the
+// masterRobByVessel ledger below). Stop mirrors start because the seeded engines carry both
+// time fields: NO OPERATION status implies zero consumption (stop = start).
 const engineLogSeeds: LogSeed[] = [
-  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(14, 0), timeStop: todayAt(15, 0), rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 750, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
-  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(15, 0), timeStop: todayAt(16, 30), rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 700, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
-  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(8, 0), timeStop: todayAt(16, 0), rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 410, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
+  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(14, 0), timeStop: todayAt(15, 0), rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
+  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(15, 0), timeStop: todayAt(16, 30), rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
+  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(8, 0), timeStop: todayAt(16, 0), rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
   { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
 ]
 
