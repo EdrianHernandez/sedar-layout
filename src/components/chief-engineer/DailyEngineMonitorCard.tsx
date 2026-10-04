@@ -163,6 +163,10 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
   const pmsTone: PmsTone = pmsRemaining < 10 ? 'critical' : pmsRemaining < 50 ? 'warning' : 'normal'
   const tone = PMS_TONES[pmsTone]
 
+  const bumpRobStart = (direction: 1 | -1) => {
+    onUpdate({ ...log, fuelRobStart: clamp(log.fuelRobStart + 10 * direction, 0, 999999) })
+  }
+
   const bumpRobStop = (direction: 1 | -1) => {
     onUpdate({ ...log, fuelRobStop: clamp(log.fuelRobStop + 10 * direction, 0, 999999) })
   }
@@ -193,14 +197,24 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
     [activeStatus, log, onUpdate, setWatchStart, setWatchStop],
   )
 
-  // Single owner of meterCurrent: mirror the computed value into the store, which keeps the Review table
-  // and the PMS card in agreement. This doubles as the NO OPERATION lock (delta 0 ⇒ meter = previous).
-  // The equality guard makes it loop-free; review mode never writes.
+  // Single owner of the auto-derived fields: mirror the computed meter (keeps the Review table and the
+  // PMS card in agreement) and, under NO OPERATION, keep ROB STOP = ROB START so Fuel Consumed reads 0.
+  // One effect (not two) so two onUpdate calls can never clobber each other's {...log} snapshot.
+  // Equality guards make it loop-free; review mode never writes.
   useEffect(() => {
-    if (readOnly || derivedMeter === null) return
-    if (log.meterCurrent === derivedMeter) return
-    onUpdate({ ...log, meterCurrent: derivedMeter })
-  }, [derivedMeter, log, onUpdate, readOnly])
+    if (readOnly) return
+    const next = { ...log }
+    let changed = false
+    if (derivedMeter !== null && log.meterCurrent !== derivedMeter) {
+      next.meterCurrent = derivedMeter
+      changed = true
+    }
+    if (isNoOperation && log.fuelRobStop !== log.fuelRobStart) {
+      next.fuelRobStop = log.fuelRobStart
+      changed = true
+    }
+    if (changed) onUpdate(next)
+  }, [derivedMeter, isNoOperation, log, onUpdate, readOnly])
 
   // While NO OPERATION, STOP always mirrors START (duration 0 by construction). The equality guard
   // keeps it loop-free; it also repairs logs that open as NO OPERATION with an empty stop time.
@@ -389,22 +403,42 @@ export function DailyEngineMonitorCard({ log, onEngineChange, onUpdate, readOnly
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="flex flex-col rounded-lg border border-[#d4d4d4] bg-white p-3">
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">ROB Start (L)</span>
-              <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center rounded-lg border border-[#cdd3d8] bg-[#f7f9fa] px-1 py-1 focus-within:border-[#4b718f]">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  aria-label="ROB Start"
-                  value={log.fuelRobStart}
-                  disabled={readOnly}
-                  onChange={(event) => {
-                    const next = Number(event.target.value)
-                    onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
-                  }}
-                  className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                />
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
+              <div className="mt-3 flex flex-row items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <button
+                  type="button"
+                  aria-label="Decrease ROB start"
+                  onClick={() => bumpRobStart(-1)}
+                  disabled={isNoOperation || readOnly}
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Minus size={24} strokeWidth={3} />
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col items-center justify-center border-x border-slate-200 p-3 focus-within:border-[#4b718f]">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={10}
+                    aria-label="ROB Start"
+                    value={log.fuelRobStart}
+                    disabled={isNoOperation || readOnly}
+                    onChange={(event) => {
+                      const next = Number(event.target.value)
+                      onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
+                    }}
+                    className="no-number-spinner w-full bg-transparent text-center text-3xl font-black tabular-nums leading-none text-[#111820] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  />
+                  <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">L</span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Increase ROB start"
+                  onClick={() => bumpRobStart(1)}
+                  disabled={isNoOperation || readOnly}
+                  className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus size={24} strokeWidth={3} />
+                </button>
               </div>
             </div>
 
