@@ -1,6 +1,6 @@
 import { useOutletContext } from 'react-router-dom'
 import type { EngineLog } from '../../types/engineLog'
-import type { PMSChecklist } from '../../types/pmsChecklist'
+import type { PMSChecklist, TaskCondition } from '../../types/pmsChecklist'
 import type { Vessel } from '../../types/vessel'
 
 export interface ChiefEngineerOutletContext {
@@ -13,8 +13,9 @@ export interface ChiefEngineerOutletContext {
   logs: EngineLog[]
   checklists: PMSChecklist[]
   updateLog: (log: EngineLog) => void
-  toggleTask: (checklistId: string, taskId: string) => void
-  saveRemark: (checklistId: string, taskId: string, remark: string, hasPhoto: boolean) => void
+  setTaskCondition: (checklistId: string, taskId: string, condition: TaskCondition) => void
+  setTaskIssue: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
+  signoffChecklist: (checklistId: string) => void
 }
 
 export function useChiefEngineer(): ChiefEngineerOutletContext {

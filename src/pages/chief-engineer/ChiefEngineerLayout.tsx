@@ -18,8 +18,9 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     logs,
     checklists,
     updateLog,
-    toggleTask,
-    saveRemark,
+    setTaskCondition,
+    setTaskIssue,
+    signoffChecklist,
   } = useEngineRoom()
 
   const outletContext: ChiefEngineerOutletContext = {
@@ -32,8 +33,9 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     logs,
     checklists,
     updateLog,
-    toggleTask,
-    saveRemark,
+    setTaskCondition,
+    setTaskIssue,
+    signoffChecklist,
   }
 
   const path = location.pathname.replace(/\/+$/, '')

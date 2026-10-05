@@ -17,7 +17,7 @@ export function ChiefEngineerHomePage() {
 
   const runningLog = logs.find((log) => log.timeStart && !log.timeStop) ?? logs[0]
   const runningHours = computeRunningHours(runningLog, now)
-  const openTasks = checklists.reduce((total, checklist) => total + checklist.tasks.filter((task) => !task.isDone).length, 0)
+  const openTasks = checklists.reduce((total, checklist) => total + checklist.tasks.filter((task) => task.condition === 'pending').length, 0)
 
   const summaryValues: Record<(typeof summaryCards)[number]['key'], { value: string; detail: string }> = {
     hours: { value: formatRunningHours(runningHours), detail: runningLog ? `${runningLog.label} · engine hours today` : 'No engine running' },

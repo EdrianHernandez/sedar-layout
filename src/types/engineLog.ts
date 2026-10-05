@@ -24,7 +24,10 @@ export interface EngineLog {
   fwCoolantAdded: number
   meterPrevious: number
   meterCurrent: number
-  lastOverhaulMeter: number
+  // PMS epoch base: the lifetime-meter reading at the last 12,000-Hour Drydocking
+  // sign-off. The PMS odometer (elapsed) = display meter − this base, and the base
+  // only moves when the drydock routine is signed off (odometer resets to 0).
+  lastDrydockMeter: number
 }
 
 export type WatchLogStatus = 'verified' | 'pending'

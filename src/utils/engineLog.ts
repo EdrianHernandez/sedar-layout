@@ -80,3 +80,43 @@ export function formatTimeOnly(iso: string | null, fallback = '—'): string {
   if (Number.isNaN(date.getTime())) return fallback
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
+
+// PMS odometer: hours elapsed in the current drydock epoch (lifetime meter − the base
+// captured at the last 12,000-H drydocking sign-off — the ONLY event that resets it to
+// 0). Mirrors the monitoring card's derivation exactly (no-operation → flat · open or
+// incomplete window → flat at meterPrevious · closed window → meterPrevious + watch
+// delta), so the PMS Console and the Daily Engine Log always agree on the same engine.
+export function pmsOdometer(log: EngineLog): number {
+  return Math.max(0, Math.round((displayMeterOf(log) - log.lastDrydockMeter) * 10) / 10)
+}
+
+// The lifetime-meter reading the odometer epoch is measured from (needed to move the
+// base on a drydock sign-off: base = display meter ⇒ odometer resets to 0).
+export function displayMeterOf(log: EngineLog): number {
+  const watchDelta =
+    log.status === 'no-operation'
+      ? 0
+      : log.timeStart && log.timeStop
+        ? computeWatchDurationHours(formatTimeOnly(log.timeStart, ''), formatTimeOnly(log.timeStop, ''))
+        : null
+  const meter = watchDelta === null ? log.meterPrevious : Math.round((log.meterPrevious + watchDelta) * 10) / 10
+  return meter
+}
+
+// --- Recurring (modulo) interval math -------------------------------------
+// A routine of X hours is DUE when the odometer has crossed a multiple of X since the
+// last time that routine was signed off: floor(odometer / X) > floor(completed / X).
+// Never-completed routines count from epoch 0, so the first unlock is at X itself
+// (covers both the `odometer % X == 0` and the "crossed a multiple" clauses).
+
+export function nextDueHours(hours: number, completedOdometer?: number): number {
+  return (Math.floor((completedOdometer ?? 0) / hours) + 1) * hours
+}
+
+export function isRoutineDue(odometer: number, hours: number, completedOdometer?: number): boolean {
+  return Math.floor(odometer / hours) > Math.floor((completedOdometer ?? 0) / hours)
+}
+
+export function remainingToDue(odometer: number, hours: number, completedOdometer?: number): number {
+  return Math.max(0, Math.round((nextDueHours(hours, completedOdometer) - odometer) * 10) / 10)
+}

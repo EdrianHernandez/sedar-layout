@@ -55,7 +55,33 @@ export const ENGINE_TABS: EngineTab[] = [
   { id: 'VESSEL-FLUIDS', label: 'VESSEL FLUIDS', className: 'vessel' },
 ]
 
-export const PMS_INTERVALS: PMSInterval[] = ['250H', '500H', '1000H', '6000H']
+// The four machinery units the PMS Console can select (the vessel-level fluids tab
+// is not tied to an engine and has no odometer, so it is excluded).
+export const MACHINERY_TABS = ENGINE_TABS.filter(
+  (tab): tab is { id: EngineId; label: string; className: 'main' | 'auxiliary' } => tab.id !== 'VESSEL-FLUIDS',
+)
+
+export const PMS_INTERVALS: PMSInterval[] = ['250H', '500H', '1000H', '6000H', '12000H']
+
+// Display titles and required running hours for each maintenance tier — the PMS Console
+// derives lock/unlock from these against the active engine's odometer (elapsed since the
+// last 12,000-H drydock sign-off) using recurring modulo math. 12000H is the master
+// drydocking tier: its sign-off (Chief Engineer PIN) is the ONLY odometer reset.
+export const PMS_INTERVAL_LABELS: Record<PMSInterval, string> = {
+  '250H': '250-Hour Routine',
+  '500H': '500-Hour Routine',
+  '1000H': '1000-Hour Routine',
+  '6000H': 'Overhaul',
+  '12000H': '12,000-Hour Drydocking',
+}
+
+export const PMS_INTERVAL_HOURS: Record<PMSInterval, number> = {
+  '250H': 250,
+  '500H': 500,
+  '1000H': 1000,
+  '6000H': 6000,
+  '12000H': 12000,
+}
 
 export const recentWatchLogs: WatchLogSummary[] = [
   { id: 'wl-1', date: '02 Oct 2026', timeRange: '08:00 - 12:00', preparedBy: '2nd Engineer', status: 'pending' },
@@ -98,7 +124,7 @@ interface LogSeed {
   fwCoolantAdded: number
   meterPrevious: number
   meterCurrent: number
-  lastOverhaulMeter: number
+  lastDrydockMeter: number
 }
 
 // STATUS is explicit per row (operated / no-operation / standby) instead of being derived from
@@ -110,10 +136,10 @@ interface LogSeed {
 // Monitoring form tracks day-tank levels, not master/bunker storage (that lives in the
 // masterRobByVessel ledger below).
 const engineLogSeeds: LogSeed[] = [
-  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
-  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
-  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
-  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', status: 'standby', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
+  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastDrydockMeter: 14100 },
+  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastDrydockMeter: 14200 },
+  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastDrydockMeter: 6000 },
+  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', status: 'standby', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastDrydockMeter: 5000 },
 ]
 
 // Master (vessel-wide) fluid inventory at the start of the watch — the physical report's
@@ -139,48 +165,108 @@ export function createInitialEngineLogs(vessel: Vessel): EngineLog[] {
   return engineLogSeeds.map((seed) => ({ id: `log-${vessel.id}-${seed.engineId.toLowerCase()}`, date, ...seed }))
 }
 
-function buildChecklist(vessel: Vessel, interval: PMSInterval, engineScope: string, labels: string[]): PMSChecklist {
-  const id = `pms-${vessel.id}-${interval.toLowerCase()}`
+// Interval task templates per machinery class: main engines and generators share an
+// interval cadence but run different hardware, so each class carries its own tasks.
+const mainEngineTasks: Record<PMSInterval, string[]> = {
+  '250H': [
+    'Drain and inspect lube oil suction strainer',
+    'Check cylinder head nuts and hold-down bolts',
+    'Inspect turbocharger suction filter',
+    'Record exhaust temperatures per cylinder',
+    'Test low lube oil pressure alarm',
+  ],
+  '500H': [
+    'Change main engine lube oil filter elements',
+    'Check fuel injection valve atomisation',
+    'Check cooling water pump gland packing',
+    'Clean and inspect oil cooler core',
+    'Verify emergency stop linkage function',
+  ],
+  '1000H': [
+    'Inspect exhaust valve spindles and seats',
+    'Measure piston ring gap at bottom dead centre',
+    'Overhaul fuel injection pumps',
+    'Check turbocharger bearing clearances',
+    'Sample lube oil for laboratory analysis',
+    'Inspect sea water strainer and clean',
+  ],
+  '6000H': [
+    'General overhaul of cylinder liners',
+    'Renew piston rings all cylinders',
+    'Grind exhaust and inlet valves',
+    'Inspect connecting rod big end bearings',
+    'Calibrate all pressure and temperature sensors',
+    'Renew jacket water pump impeller',
+  ],
+  '12000H': [
+    'Undergo drydocking scope inspection with class surveyor',
+    'Inspect propeller shaft, seals, and stern tube',
+    'Check rudder stock, bearings, and steering gear',
+    'Renew sacrificial anodes (hull and propeller)',
+    'Pressure test sea chests and overboard valves',
+    'Main engine internal inspection and clearance checks',
+  ],
+}
+
+const auxiliaryTasks: Record<PMSInterval, string[]> = {
+  '250H': [
+    'Check and top up cooling water level',
+    'Inspect generator air filter and clean',
+    'Test high water temperature alarm',
+    'Check battery charger output voltage',
+    'Record exhaust temperature per cylinder',
+  ],
+  '500H': [
+    'Change generator lube oil and filter elements',
+    'Clean and inspect fuel injector nozzles',
+    'Inspect alternator terminals and tighten',
+    'Test overspeed trip function',
+    'Drain sediment from fuel day tank',
+  ],
+  '1000H': [
+    'Overhaul cylinder heads and valves',
+    'Inspect turbocharger bearings',
+    'Renew jacket water pump seal',
+    'Sample lube oil for laboratory analysis',
+    'Calibrate safety shut-down sensors',
+    'Inspect exhaust silencer and flexible joints',
+  ],
+  '6000H': [
+    'General overhaul of alternator bearings',
+    'Renew piston rings and inspect liners',
+    'Grind intake and exhaust valves',
+    'Inspect crankshaft main bearings',
+    'Recalibrate all gauges and transmitters',
+    'Renew all flexible hoses and gaskets',
+  ],
+  '12000H': [
+    'Undergo drydocking scope inspection with class surveyor',
+    'Inspect propulsion shaft line and stern tube seals',
+    'Check rudder stock, bearings, and steering gear',
+    'Renew sacrificial anodes (hull and propeller)',
+    'Pressure test sea chests and overboard valves',
+    'Alternator and switchboard insulation resistance test',
+  ],
+}
+
+function buildChecklist(vessel: Vessel, engineId: EngineId, interval: PMSInterval, labels: string[]): PMSChecklist {
+  const id = `pms-${vessel.id}-${engineId.toLowerCase()}-${interval.toLowerCase()}`
   return {
     id,
     interval,
-    engineScope,
+    engineId,
+    engineScope: ENGINE_TABS.find((tab) => tab.id === engineId)?.label ?? engineId,
     isDone: false,
-    tasks: labels.map((label, index) => ({ id: `${id}-task-${index}`, label, isDone: false })),
+    tasks: labels.map((label, index) => ({ id: `${id}-task-${index}`, label, condition: 'pending' })),
   }
 }
 
+// One checklist set per ENGINE (not per vessel): each machinery unit ages on its own
+// odometer, so its 250H routine unlocking must not unlock its neighbour's.
 export function createInitialPmsChecklists(vessel: Vessel): PMSChecklist[] {
-  return [
-    buildChecklist(vessel, '250H', 'M/E PORT & STBD', [
-      'Drain and inspect lube oil suction strainer',
-      'Check cylinder head nuts and hold-down bolts',
-      'Inspect turbocharger suction filter',
-      'Record exhaust temperatures per cylinder',
-      'Test low lube oil pressure alarm',
-    ]),
-    buildChecklist(vessel, '500H', 'M/E PORT & STBD', [
-      'Change main engine lube oil filter elements',
-      'Check fuel injection valve atomisation',
-      'Check cooling water pump gland packing',
-      'Clean and inspect oil cooler core',
-      'Verify emergency stop linkage function',
-    ]),
-    buildChecklist(vessel, '1000H', 'M/E PORT & STBD', [
-      'Inspect exhaust valve spindles and seats',
-      'Measure piston ring gap at bottom dead centre',
-      'Overhaul fuel injection pumps',
-      'Check turbocharger bearing clearances',
-      'Sample lube oil for laboratory analysis',
-      'Inspect sea water strainer and clean',
-    ]),
-    buildChecklist(vessel, '6000H', 'M/E PORT & STBD', [
-      'General overhaul of cylinder liners',
-      'Renew piston rings all cylinders',
-      'Grind exhaust and inlet valves',
-      'Inspect connecting rod big end bearings',
-      'Calibrate all pressure and temperature sensors',
-      'Renew jacket water pump impeller',
-    ]),
-  ]
+  const engines: EngineId[] = ['ME-PORT', 'ME-STBD', 'AUX-1', 'AUX-2']
+  return engines.flatMap((engineId) => {
+    const templates = engineId.startsWith('ME') ? mainEngineTasks : auxiliaryTasks
+    return PMS_INTERVALS.map((interval) => buildChecklist(vessel, engineId, interval, templates[interval]))
+  })
 }

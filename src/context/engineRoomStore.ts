@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { EngineLog, WatchLogReviewStatus } from '../types/engineLog'
-import type { PMSChecklist } from '../types/pmsChecklist'
+import type { PMSChecklist, TaskCondition } from '../types/pmsChecklist'
 import type { Vessel } from '../types/vessel'
 import type { MasterRob } from '../data/chiefEngineerMockData'
 
@@ -26,8 +26,12 @@ export interface EngineRoomContextValue {
   logs: EngineLog[]
   checklists: PMSChecklist[]
   updateLog: (updated: EngineLog) => void
-  toggleTask: (checklistId: string, taskId: string) => void
-  saveRemark: (checklistId: string, taskId: string, remark: string, hasPhoto: boolean) => void
+  // 3-state condition reporting: picking a non-issue condition clears issue data.
+  setTaskCondition: (checklistId: string, taskId: string, condition: TaskCondition) => void
+  setTaskIssue: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
+  // Explicit sign-off: snapshots the odometer for the recurring modulo unlock; the
+  // 12000H drydock tier additionally resets the engine's odometer epoch to 0.
+  signoffChecklist: (checklistId: string) => void
   signoff: WatchLogSignoff | null
   setSignoff: (signoff: WatchLogSignoff) => void
 }

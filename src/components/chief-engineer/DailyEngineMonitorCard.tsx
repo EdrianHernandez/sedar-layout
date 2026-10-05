@@ -4,7 +4,8 @@ import { useEngineRoom } from '../../context/engineRoomStore'
 import type { EngineLog, EngineStatus } from '../../types/engineLog'
 import type { PMSInterval } from '../../types/pmsChecklist'
 import { ENGINE_TABS, PMS_INTERVALS, type MonitorTabId } from '../../data/chiefEngineerMockData'
-import { computeRunningHours, computeWatchDurationHours, formatTimeOnly, fuelConsumedBy, localIsoAt } from '../../utils/engineLog'
+import { computeRunningHours, computeWatchDurationHours, formatTimeOnly, fuelConsumedBy, localIsoAt, pmsOdometer } from '../../utils/engineLog'
+import { PMS_TONES, type PmsTone } from '../../utils/pmsTones'
 
 interface DailyEngineMonitorCardProps {
   log: EngineLog
@@ -68,41 +69,6 @@ function completeTimeInput(raw: string): string {
 }
 
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * 34
-
-const PMS_TONES = {
-  critical: {
-    accent: 'border-t-red-500',
-    track: 'text-red-100',
-    ring: 'text-red-600',
-    percent: 'text-red-600',
-    chip: 'border-red-300 bg-red-100 text-red-700',
-    value: 'text-red-700',
-    label: 'text-red-700/80',
-    helper: 'text-red-800/70',
-  },
-  warning: {
-    accent: 'border-t-amber-500',
-    track: 'text-amber-100',
-    ring: 'text-amber-500',
-    percent: 'text-amber-600',
-    chip: 'border-amber-300 bg-amber-100 text-amber-800',
-    value: 'text-amber-700',
-    label: 'text-amber-700/80',
-    helper: 'text-amber-800/70',
-  },
-  normal: {
-    accent: 'border-t-blue-500',
-    track: 'text-blue-100',
-    ring: 'text-blue-600',
-    percent: 'text-blue-600',
-    chip: 'border-blue-300 bg-blue-100 text-blue-700',
-    value: 'text-blue-900',
-    label: 'text-blue-700/70',
-    helper: 'text-blue-800/70',
-  },
-} as const
-
-type PmsTone = keyof typeof PMS_TONES
 
 const STATUS_OPTIONS = [
   { id: 'operated', label: 'Operated', bg: 'bg-green-100', text: 'text-green-800', shell: 'border-green-300 bg-green-50 text-green-800 hover:border-green-400', dotRing: 'ring-green-200' },
@@ -213,11 +179,14 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
         : null
   const derivedMeter = watchDelta === null ? null : roundTo(log.meterPrevious + watchDelta, 1)
   const displayMeter = derivedMeter ?? log.meterPrevious
-  const sinceOverhaul = Math.max(0, roundTo(displayMeter - log.lastOverhaulMeter, 1))
-  const nextInterval: PMSInterval = PMS_INTERVALS.find((interval) => Number(interval.replace('H', '')) > sinceOverhaul) ?? '6000H'
+  // PMS odometer = hours in the current drydock epoch — the SAME shared helper the PMS
+  // Console uses, so both surfaces can never disagree. Threshold "next scheduled" view
+  // (the console layers recurring modulo due-dates on top).
+  const pmsElapsed = pmsOdometer(log)
+  const nextInterval: PMSInterval = PMS_INTERVALS.find((interval) => Number(interval.replace('H', '')) > pmsElapsed) ?? '12000H'
   const intervalHours = Number(nextInterval.replace('H', ''))
-  const pmsRemaining = Math.max(0, roundTo(intervalHours - sinceOverhaul, 1))
-  const pmsProgress = clamp((sinceOverhaul / intervalHours) * 100, 0, 100)
+  const pmsRemaining = Math.max(0, roundTo(intervalHours - pmsElapsed, 1))
+  const pmsProgress = clamp((pmsElapsed / intervalHours) * 100, 0, 100)
   const pmsTone: PmsTone = pmsRemaining < 10 ? 'critical' : pmsRemaining < 50 ? 'warning' : 'normal'
   const tone = PMS_TONES[pmsTone]
 
@@ -542,7 +511,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
               <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">PMS Odometer (Elapsed)</span>
               <div className="mt-3 flex min-h-14 flex-1 flex-col items-center justify-center">
                 <span className="truncate text-3xl font-black tabular-nums leading-none text-[#111820]">
-                  {sinceOverhaul.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  {pmsElapsed.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
                 <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#7c8994]">HRS</span>
               </div>

@@ -116,7 +116,7 @@ export const chiefEngineerNavigationGroups: NavigationGroup[] = [
     label: 'Active Operations',
     items: [
       { label: 'Daily Engine Log', path: '/chief-engineer/monitoring', icon: Gauge },
-      { label: 'PMS Checklists', path: '/chief-engineer/pms', icon: ClipboardCheck },
+      { label: 'PMS Console', path: '/chief-engineer/pms', icon: ClipboardCheck },
     ],
   },
   {
