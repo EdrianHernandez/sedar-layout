@@ -5,16 +5,17 @@ import { useEngineRoom } from '../../context/engineRoomStore'
 
 interface WatchLogSignoffModalProps {
   onClose: () => void
-  onSubmit: (preparedBy: string) => void
+  onSubmit: (preparedBy: string, remarks: string) => void
 }
 
 // Kiosk sign-off: the log is signed in one gated step — PREPARED BY (this vessel's duty
-// engineers), VERIFIED BY (this vessel's designated chief, read-only), then the chief's
-// 4-digit PIN unlocks SUBMIT & LOCK. No user accounts, no logout/login cycle.
+// engineers), VERIFIED BY (this vessel's designated chief, read-only), optional handover
+// remarks, then the chief's 4-digit PIN unlocks SUBMIT & LOCK. No user accounts, no logout/login.
 export function WatchLogSignoffModal({ onClose, onSubmit }: WatchLogSignoffModalProps) {
   const { activeVessel } = useEngineRoom()
   const crew = crewByVessel[activeVessel.id]
   const [preparedBy, setPreparedBy] = useState('')
+  const [remarks, setRemarks] = useState('')
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState('')
   const pinInputRef = useRef<HTMLInputElement>(null)
@@ -41,7 +42,7 @@ export function WatchLogSignoffModal({ onClose, onSubmit }: WatchLogSignoffModal
       pinInputRef.current?.focus()
       return
     }
-    onSubmit(preparedBy)
+    onSubmit(preparedBy, remarks)
   }
 
   return (
@@ -91,6 +92,18 @@ export function WatchLogSignoffModal({ onClose, onSubmit }: WatchLogSignoffModal
                 aria-label="Verified by (designated chief engineer for this vessel)"
               />
             </span>
+          </label>
+
+          <label className="signoff-field">
+            <span>Remarks / Handover Notes (Optional)</span>
+            <textarea
+              className="signoff-textarea"
+              rows={4}
+              value={remarks}
+              placeholder="Operational notes, anomalies, or handover messages…"
+              aria-label="Remarks / handover notes (optional)"
+              onChange={(event) => setRemarks(event.target.value)}
+            />
           </label>
 
           <div className="signoff-field">

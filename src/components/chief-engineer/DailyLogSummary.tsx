@@ -48,37 +48,29 @@ interface WatchLogTableProps {
 function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[920px] text-left">
-        {/* Percentage widths keep the operational columns (per-engine times, running hours,
-            consumables) readable and evenly balanced at any viewport width. */}
-        <colgroup>
-          <col className="w-[10%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[9%]" />
-          <col className="w-[9%]" />
-          <col className="w-[9%]" />
-          <col className="w-[5%]" />
-          <col className="w-[5%]" />
-          <col className="w-[5%]" />
-        </colgroup>
+      {/* Two-tier header: grouped super-headers (colspans) + simplified sub-headers. Columns are
+          content-sized (no fixed % colgroup) and headers are nowrap, so narrow cells (a lone "0")
+          only claim their header's width and no label is starved into a double line. */}
+      <table className="w-full text-left">
         <thead>
-          <tr className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <th scope="col" className="px-5 py-4">Engine</th>
-            <th scope="col" className="px-5 py-4">Status</th>
-            <th scope="col" className="px-5 py-4">Time Start</th>
-            <th scope="col" className="px-5 py-4">Time Stop</th>
-            <th scope="col" className="px-5 py-4">Running Hours</th>
-            <th scope="col" className="px-5 py-4">R.O.B. Start (L)</th>
-            <th scope="col" className="px-5 py-4">R.O.B. Stop (L)</th>
-            <th scope="col" className="px-5 py-4">Consumed (L)</th>
-            <th scope="col" className="px-5 py-4">L.O. Added (L)</th>
-            <th scope="col" className="px-5 py-4">F.W./C. (L)</th>
-            <th scope="col" className="px-5 py-4">RPM</th>
+          <tr className="whitespace-nowrap bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-500">
+            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 align-middle">Engine</th>
+            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 align-middle">Status</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Operations</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Fuel Oil (L)</th>
+            <th scope="col" colSpan={2} className="border-l border-slate-200 px-5 py-4 text-center">Added Fluids (L)</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Parameters</th>
+          </tr>
+          <tr className="whitespace-nowrap bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+            <th scope="col" className="border-l border-slate-200 px-5 py-4">Start</th>
+            <th scope="col" className="px-5 py-4">Stop</th>
+            <th scope="col" className="px-5 py-4">Total</th>
+            <th scope="col" className="border-l border-slate-200 px-5 py-4">Start</th>
+            <th scope="col" className="px-5 py-4">Stop</th>
+            <th scope="col" className="px-5 py-4">Consumed</th>
+            <th scope="col" className="border-l border-slate-200 px-5 py-4">L.O.</th>
+            <th scope="col" className="px-5 py-4">F.W./C.</th>
+            <th scope="col" className="border-l border-slate-200 px-5 py-4">RPM</th>
             <th scope="col" className="px-5 py-4">Oil (bar)</th>
             <th scope="col" className="px-5 py-4">Water (°C)</th>
           </tr>
@@ -241,6 +233,12 @@ export function DailyLogSummary({ logs, hydraulicOilAdded, masterRob, signoff = 
               })}
             </span>
           </div>
+          {signoff.remarks && (
+            <div className="sm:col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-[.1em] text-slate-500">Remarks / Handover Notes</span>
+              <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-slate-700">{signoff.remarks}</p>
+            </div>
+          )}
         </div>
       )}
     </section>

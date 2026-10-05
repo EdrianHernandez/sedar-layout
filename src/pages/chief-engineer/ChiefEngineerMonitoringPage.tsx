@@ -49,7 +49,8 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
   }
 
   // Validation gate: an open-ended log cannot enter Review mode — WATCH STOP (cut-off) is mandatory.
-  // Entering the review immediately raises the kiosk Sign-off modal (Prepared / Verified / PIN).
+  // The Sign-off modal is NOT raised here: the reviewer reads the whole summary first and opens
+  // it manually via SIGN OFF & SUBMIT.
   const handleReview = () => {
     if (!watchStop) {
       setStopError(true)
@@ -58,16 +59,20 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
     }
     setStopError(false)
     setViewMode('review')
-    setSignoffOpen(true)
   }
 
-  // The modal's SUBMIT & LOCK is the single final action: it records the sign-off pair,
-  // then locks the log straight to its approved state (no duty→chief hand-off).
-  const handleSignoff = (preparedBy: string) => {
+  // The modal's SUBMIT & LOCK is the single final action: it records the sign-off pair
+  // (plus optional handover remarks), then locks the log straight to approved (no duty→chief hand-off).
+  const handleSignoff = (preparedBy: string, remarks: string) => {
     if (isWorking) return
     const crew = crewByVessel[activeVessel.id]
     setSignoffOpen(false)
-    setSignoff({ preparedBy, verifiedBy: crew.chiefEngineer, signedAt: new Date().toISOString() })
+    setSignoff({
+      preparedBy,
+      verifiedBy: crew.chiefEngineer,
+      signedAt: new Date().toISOString(),
+      remarks: remarks.trim() || undefined,
+    })
     runAction('approved', `Watch log signed by ${preparedBy}, verified by ${crew.chiefEngineer}, and locked.`)
   }
 
@@ -118,7 +123,7 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
       <button
         type="button"
         onClick={handleReview}
-        title="Review all entries and open the sign-off sheet before final submission"
+        title="Review all entries before final submission"
         className="button button-review button-lg"
       >
         <Eye size={15} aria-hidden="true" /> REVIEW LOG

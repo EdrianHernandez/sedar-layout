@@ -7,6 +7,7 @@ export interface WatchLogSignoff {
   preparedBy: string
   verifiedBy: string
   signedAt: string
+  remarks?: string
 }
 
 export interface EngineRoomContextValue {
