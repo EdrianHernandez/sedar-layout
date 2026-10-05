@@ -20,6 +20,7 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     updateLog,
     setTaskCondition,
     setTaskIssue,
+    setTaskLoggedAt,
     signoffChecklist,
   } = useEngineRoom()
 
@@ -35,6 +36,7 @@ export function ChiefEngineerLayout({ onNotify }: ChiefEngineerLayoutProps) {
     updateLog,
     setTaskCondition,
     setTaskIssue,
+    setTaskLoggedAt,
     signoffChecklist,
   }
 

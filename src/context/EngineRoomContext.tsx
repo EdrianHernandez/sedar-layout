@@ -114,14 +114,16 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
           if (checklist.id !== checklistId) return checklist
           return {
             ...checklist,
-            tasks: checklist.tasks.map((task) =>
-              task.id === taskId
-                ? condition === 'issue'
-                  ? { ...task, condition }
-                  : // Leaving (or never entering) the issue state discards defect data.
-                    { ...task, condition, findings: undefined, photoDataUrl: undefined }
-                : task,
-            ),
+            tasks: checklist.tasks.map((task) => {
+              if (task.id !== taskId) return task
+              // Auto-timestamp fires only on the first pick (pending → resolved) so
+              // later Done↔Issue switches and manual overrides keep their logged time.
+              const loggedAt = task.condition === 'pending' ? task.loggedAt ?? new Date().toISOString() : task.loggedAt
+              return condition === 'issue'
+                ? { ...task, condition, loggedAt }
+                : // Leaving (or never entering) the issue state discards defect data.
+                  { ...task, condition, loggedAt, findings: undefined, photoDataUrl: undefined }
+            }),
           }
         }),
       }))
@@ -142,6 +144,22 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
                 ? { ...task, condition: 'issue' as TaskCondition, findings: findings || undefined, photoDataUrl: photoDataUrl || undefined }
                 : task,
             ),
+          }
+        }),
+      }))
+    },
+    [activeVesselId],
+  )
+
+  const setTaskLoggedAt = useCallback(
+    (checklistId: string, taskId: string, loggedAt: string) => {
+      setChecklistsByVessel((current) => ({
+        ...current,
+        [activeVesselId]: (current[activeVesselId] ?? []).map((checklist) => {
+          if (checklist.id !== checklistId) return checklist
+          return {
+            ...checklist,
+            tasks: checklist.tasks.map((task) => (task.id === taskId ? { ...task, loggedAt } : task)),
           }
         }),
       }))
@@ -218,11 +236,12 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
       updateLog,
       setTaskCondition,
       setTaskIssue,
+      setTaskLoggedAt,
       signoffChecklist,
       signoff: signoffByVessel[activeVesselId] ?? null,
       setSignoff,
     }
-  }, [reviewStatus, hydraulicOilByVessel, setHydraulicOilAdded, robReceivedByVessel, setRobReceived, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, setTaskCondition, setTaskIssue, signoffChecklist, signoffByVessel, setSignoff])
+  }, [reviewStatus, hydraulicOilByVessel, setHydraulicOilAdded, robReceivedByVessel, setRobReceived, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, setTaskCondition, setTaskIssue, setTaskLoggedAt, signoffChecklist, signoffByVessel, setSignoff])
 
   return <EngineRoomContext.Provider value={value}>{children}</EngineRoomContext.Provider>
 }

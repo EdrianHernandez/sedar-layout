@@ -23,6 +23,7 @@ import { ChiefEngineerHomePage } from './pages/chief-engineer/ChiefEngineerHomeP
 import { ChiefEngineerMonitoringPage } from './pages/chief-engineer/ChiefEngineerMonitoringPage'
 import { ChiefEngineerPmsPage } from './pages/chief-engineer/ChiefEngineerPmsPage'
 import { ChiefEngineerPmsExecutePage } from './pages/chief-engineer/ChiefEngineerPmsExecutePage'
+import { ChiefEngineerPmsReviewPage } from './pages/chief-engineer/ChiefEngineerPmsReviewPage'
 import { DailyEngineLogHistory } from './pages/chief-engineer/DailyEngineLogHistory'
 import { ChiefEngineerPmsHistoryPage } from './pages/chief-engineer/ChiefEngineerPmsHistoryPage'
 import { useEngineRoom } from './context/engineRoomStore'
@@ -123,6 +124,7 @@ export default function App() {
           <Route path="monitoring/history" element={<DailyEngineLogHistory />} />
           <Route path="pms" element={<ChiefEngineerPmsPage />} />
           <Route path="pms/execute/:engineId/:interval" element={<ChiefEngineerPmsExecutePage />} />
+          <Route path="pms/execute/:engineId/:interval/review" element={<ChiefEngineerPmsReviewPage />} />
           <Route path="pms/history/main-engine" element={<ChiefEngineerPmsHistoryPage scope="Main Engine" />} />
           <Route path="pms/history/transmission" element={<ChiefEngineerPmsHistoryPage scope="Transmission" />} />
           <Route path="pms/history/generator" element={<ChiefEngineerPmsHistoryPage scope="Generator" />} />

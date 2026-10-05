@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Camera, Check, CheckCheck, CircleSlash, ShieldCheck, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Camera, Check, CheckCheck, Pencil, Trash2, X } from 'lucide-react'
 import type { PMSTask, TaskCondition } from '../../types/pmsChecklist'
 import {
   consoleTitle,
-  crewByVessel,
   MACHINERY_TABS,
   PMS_INTERVALS,
   PMS_INTERVAL_HOURS,
@@ -23,8 +22,16 @@ interface ConditionOption {
 
 const IDLE_CLS = 'border-[#cdd3d8] bg-white text-[#526475] hover:bg-[#f4f6f7]'
 
-// 3-state condition reporting: every task must be resolved (done / issue / na) before
-// the checklist can be signed off. Issue Found reveals the defect inputs below its row.
+// Module scope (not render): a datetime-local value is invalid if it lies in the
+// future — inspections can be backdated, never scheduled ahead.
+const isFutureLocalTime = (localValue: string): boolean => {
+  const time = new Date(localValue).getTime()
+  return !Number.isNaN(time) && time > Date.now()
+}
+
+// Strict binary condition reporting: every task must be resolved (Done / Issue Found)
+// before the checklist can be submitted. Issue Found reveals the mandatory remarks
+// and evidence inputs below its row.
 const CONDITION_OPTIONS: ConditionOption[] = [
   {
     value: 'done',
@@ -40,39 +47,32 @@ const CONDITION_OPTIONS: ConditionOption[] = [
     active: 'border-[#e0b64a] bg-[#fff0bd] text-[#775000]',
     idle: IDLE_CLS,
   },
-  {
-    value: 'na',
-    label: 'N/A',
-    icon: <CircleSlash size={15} aria-hidden="true" />,
-    active: 'border-[#5f6873] bg-[#edf0f2] text-[#4f5d68]',
-    idle: IDLE_CLS,
-  },
 ]
 
 // Dedicated Task Execution Screen for one engine + interval: reached from a card's
 // START/VIEW CHECKLIST navigation (never expanded in place on the dashboard).
 export function ChiefEngineerPmsExecutePage() {
   const { engineId: engineParam, interval: intervalParam } = useParams()
-  const { activeVessel, logs, checklists, setTaskCondition, setTaskIssue, signoffChecklist, notify } =
+  const { logs, checklists, setTaskCondition, setTaskIssue, setTaskLoggedAt, notify } =
     useChiefEngineer()
   const navigate = useNavigate()
-  const [pinOpen, setPinOpen] = useState(false)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState('')
-  const pinInputRef = useRef<HTMLInputElement>(null)
+  // Manual timestamp override: which task is being edited + its datetime-local draft.
+  const [tsTask, setTsTask] = useState<PMSTask | null>(null)
+  const [tsDraft, setTsDraft] = useState('')
+  const [tsError, setTsError] = useState('')
+  const tsInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!pinOpen) return
-    pinInputRef.current?.focus()
+    if (!tsTask) return
+    tsInputRef.current?.focus()
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      setPinOpen(false)
-      setPin('')
-      setPinError('')
+      setTsTask(null)
+      setTsError('')
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [pinOpen])
+  }, [tsTask])
 
   // Route validation: unknown engine or interval (or a routine that is neither due
   // nor signed off — a stale deep link) bounces back to the dashboard.
@@ -92,56 +92,55 @@ export function ChiefEngineerPmsExecutePage() {
   const total = checklist.tasks.length
   const resolved = checklist.tasks.filter((task) => task.condition !== 'pending').length
   const issueCount = checklist.tasks.filter((task) => task.condition === 'issue').length
-  const naCount = checklist.tasks.filter((task) => task.condition === 'na').length
   const allResolved = resolved === total
-  const isDrydock = interval === '12000H'
   const nextDue = nextDueHours(hours, checklist.completedOdometer)
   const remaining = remainingToDue(odometer, hours, checklist.completedOdometer)
-  const crew = crewByVessel[activeVessel.id]
   const label = PMS_INTERVAL_LABELS[interval]
 
-  const complete = () => {
-    signoffChecklist(checklist.id)
-    notify(
-      isDrydock
-        ? `${label} signed off for ${engineTab.label} — odometer reset to 0.0 H.`
-        : `${label} signed off for ${engineTab.label}.`,
-    )
-    navigate('/chief-engineer/pms')
-  }
-
-  const handleSignoff = () => {
+  // Submission moved to the full-screen Review Summary step — this button only
+  // routes there once every task carries a condition.
+  const openReview = () => {
     if (readOnly || !allResolved) return
-    // Chief Engineer PIN gate: only the master drydocking tier resets the odometer.
-    if (isDrydock) {
-      setPin('')
-      setPinError('')
-      setPinOpen(true)
+    navigate(`/chief-engineer/pms/execute/${engineTab.id}/${interval}/review`)
+  }
+
+  // Compact logged-time display: "Oct 5, 10:45 AM".
+  const formatLoggedAt = (iso: string) =>
+    new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+  // datetime-local needs a local "YYYY-MM-DDTHH:mm" string (no timezone, no seconds).
+  const toLocalInputValue = (iso: string) => {
+    const date = new Date(iso)
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  }
+
+  const openTsEditor = (task: PMSTask) => {
+    if (!task.loggedAt) return
+    setTsDraft(toLocalInputValue(task.loggedAt))
+    setTsError('')
+    setTsTask(task)
+  }
+
+  const cancelTsEditor = () => {
+    setTsTask(null)
+    setTsError('')
+  }
+
+  const saveTsEditor = () => {
+    if (!tsTask) return
+    const date = new Date(tsDraft)
+    if (Number.isNaN(date.getTime())) {
+      setTsError('Pick a valid date and time.')
       return
     }
-    complete()
-  }
-
-  const cancelPin = () => {
-    setPinOpen(false)
-    setPin('')
-    setPinError('')
-  }
-
-  const confirmDrydock = () => {
-    if (pin !== crew.chiefPin) {
-      setPinError('Incorrect PIN. Authorization refused — try again.')
-      setPin('')
-      pinInputRef.current?.focus()
+    if (isFutureLocalTime(tsDraft)) {
+      setTsError('An inspection cannot be logged in the future.')
       return
     }
-    cancelPin()
-    complete()
-  }
-
-  const handlePinChange = (raw: string) => {
-    setPin(raw.replace(/\D/g, '').slice(0, 4))
-    setPinError('')
+    setTaskLoggedAt(checklist.id, tsTask.id, date.toISOString())
+    setTsTask(null)
+    setTsError('')
   }
 
   const attachPhoto = (task: PMSTask, file: File | undefined) => {
@@ -166,92 +165,71 @@ export function ChiefEngineerPmsExecutePage() {
         <div className="tech-header-text">
           <span className="tech-header-kicker">{consoleTitle} · PMS Task Execution</span>
           <h1>{label}</h1>
-          <p>
-            {engineTab.label} · {engineTab.className === 'main' ? 'Main Engine' : 'Auxiliary Generator'} ·{' '}
-            {activeVessel.name}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              {engineTab.label} · {engineTab.className === 'main' ? 'Main Engine' : 'Auxiliary Generator'} · Odometer
+              at execution: {odometer.toFixed(1)} HRS
+            </span>
+            {readOnly ? (
+              <span className="tech-status-badge tech-status-completed">
+                Signed Off · Next due {nextDue.toLocaleString('en-US')} H
+              </span>
+            ) : due ? (
+              <span className="tech-status-badge tech-status-overdue inline-flex items-center gap-1.5">
+                <AlertTriangle size={12} aria-hidden="true" /> Due Now
+              </span>
+            ) : (
+              <span className="tech-status-badge tech-status-scheduled">
+                Scheduled · {remaining.toFixed(1)} H remaining
+              </span>
+            )}
           </p>
         </div>
         <div className="tech-header-actions">
+          <span className="tech-status-badge tech-status-completed">
+            {resolved}/{total} Resolved
+          </span>
+          {issueCount > 0 && (
+            <span className="tech-status-badge tech-status-due-soon">
+              {issueCount} Issue{issueCount > 1 ? 's' : ''}
+            </span>
+          )}
           <Link to="/chief-engineer/pms" className="button button-secondary button-lg">
             <ArrowLeft size={15} aria-hidden="true" /> Back to Dashboard
           </Link>
+          {!readOnly && (
+            <button
+              type="button"
+              className="button button-success button-lg"
+              disabled={!allResolved}
+              title={allResolved ? undefined : 'Resolve every task (Done / Issue Found) to continue.'}
+              onClick={openReview}
+            >
+              <CheckCheck size={15} aria-hidden="true" /> Review Summary
+            </button>
+          )}
         </div>
       </div>
 
-      <section className="tech-panel" aria-label={`${label} execution for ${engineTab.label}`}>
-        <header className="tech-panel-header">
-          <div>
-            <h2>
-              {engineTab.label} — {label}
-            </h2>
-            <p>Consolidated task list · condition reporting with defect evidence</p>
-          </div>
-          {readOnly && (
-            <span className="tech-status-badge tech-status-completed inline-flex items-center gap-1.5">
-              <CheckCheck size={13} aria-hidden="true" /> Signed Off
-            </span>
-          )}
-        </header>
-
-        <div className="grid gap-4 p-4 sm:p-5">
-          {/* Current odometer for this engine + due status of this routine. */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[#d4d4d4] bg-[#f9fafb] p-4">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#5f6873]">
-                Current PMS Odometer (Elapsed) · {engineTab.label}
-              </span>
-              <div className="mt-1 flex items-end gap-2">
-                <strong className="text-4xl font-black tabular-nums leading-none text-[#111820]">
-                  {odometer.toFixed(1)}
-                </strong>
-                <span className="pb-1 text-[11px] font-black uppercase tracking-widest text-[#7c8994]">HRS</span>
+      {/* Flat task list on the page background — no panel card, no duplicate inner header
+          (the main page header above owns the title and odometer metadata). */}
+      <div className="grid gap-4">
+        <ul className="border-y border-[#e2e7ea]">
+          {checklist.tasks.map((task, index) => (
+            <li
+              key={task.id}
+              className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-[#e2e7ea] py-3 last:border-b-0"
+            >
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                <span className="w-5 shrink-0 text-right text-xs font-black text-[#7c8994]">{index + 1}.</span>
+                <p className="text-sm font-bold leading-snug text-[#283746]">{task.label}</p>
               </div>
-            </div>
-            <div className="text-right">
-              {readOnly ? (
-                <>
-                  <span className="tech-status-badge tech-status-completed">
-                    Signed off at {(checklist.completedOdometer ?? 0).toFixed(1)} H
-                  </span>
-                  <p className="mt-1.5 text-[11px] font-bold text-[#7c8994]">
-                    Next due at {nextDue.toLocaleString('en-US')} H
-                  </p>
-                </>
-              ) : due ? (
-                <>
-                  <span className="tech-status-badge tech-status-overdue inline-flex items-center gap-1.5">
-                    <AlertTriangle size={12} aria-hidden="true" /> Due Now
-                  </span>
-                  <p className="mt-1.5 text-[11px] font-bold text-[#7c8994]">
-                    {hours.toLocaleString('en-US')} H interval crossed · re-arms after sign-off
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span className="tech-status-badge tech-status-scheduled">Scheduled</span>
-                  <p className="mt-1.5 text-[11px] font-bold text-[#7c8994]">
-                    Next due at {nextDue.toLocaleString('en-US')} H · {remaining.toFixed(1)} H remaining
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Consolidated task list with 3-state condition reporting. */}
-          <ul className="grid gap-3">
-            {checklist.tasks.map((task, index) => (
-              <li key={task.id} className="rounded-lg border border-[#e2e7ea] bg-white p-3 sm:p-4">
-                <div className="flex items-start gap-3">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full border border-[#cdd3d8] bg-[#f4f6f7] text-[11px] font-black text-[#526475]">
-                    {index + 1}
-                  </span>
-                  <p className="flex-1 text-sm font-bold leading-snug text-[#283746]">{task.label}</p>
-                </div>
-
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <div
                   role="group"
                   aria-label={`Condition for: ${task.label}`}
-                  className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"
+                  className="inline-flex gap-1.5"
                 >
                   {CONDITION_OPTIONS.map((option) => {
                     const active = task.condition === option.value
@@ -262,7 +240,7 @@ export function ChiefEngineerPmsExecutePage() {
                         aria-pressed={active}
                         disabled={readOnly}
                         onClick={() => setTaskCondition(checklist.id, task.id, option.value)}
-                        className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black uppercase tracking-wider transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider transition disabled:cursor-not-allowed disabled:opacity-70 ${
                           active ? option.active : option.idle
                         }`}
                       >
@@ -273,15 +251,37 @@ export function ChiefEngineerPmsExecutePage() {
                   })}
                 </div>
 
+                {/* Auto-captured inspection time — tucked under the buttons, right-aligned. */}
+                {task.condition !== 'pending' && task.loggedAt && (
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-[10px] font-bold text-[#5f6873]">
+                      Logged: {formatLoggedAt(task.loggedAt)}
+                    </span>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        aria-label={`Edit logged time for: ${task.label}`}
+                        title="Edit logged time"
+                        onClick={() => openTsEditor(task)}
+                        className="grid size-5 place-items-center rounded border border-[#cdd3d8] bg-white text-[#526475] transition hover:bg-[#f4f6f7]"
+                      >
+                        <Pencil size={11} aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
                 {/* Conditional defect inputs — rendered only for Issue Found tasks. */}
                 {task.condition === 'issue' && (
-                  <div className="mt-3 grid gap-3 rounded-lg border border-[#efd181] bg-[#fffbe9] p-3">
+                  <div className="basis-full grid gap-3 rounded-lg border border-[#efd181] bg-[#fffbe9] p-3">
                     <label className="grid gap-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#775000]">
-                        Findings / Corrective Action
+                        Remarks / Findings <em className="not-italic text-[#b5451d]">*</em>
                       </span>
                       <textarea
                         rows={3}
+                        required
                         value={task.findings ?? ''}
                         disabled={readOnly}
                         onChange={(event) => setTaskIssue(checklist.id, task.id, event.target.value, task.photoDataUrl)}
@@ -296,7 +296,7 @@ export function ChiefEngineerPmsExecutePage() {
                         }`}
                       >
                         <Camera size={15} aria-hidden="true" />
-                        {task.photoDataUrl ? 'Replace Photo' : 'Camera / File Upload'}
+                        {task.photoDataUrl ? 'Replace Evidence' : 'Upload Evidence'}
                         <input
                           type="file"
                           accept="image/*"
@@ -332,121 +332,76 @@ export function ChiefEngineerPmsExecutePage() {
               </li>
             ))}
           </ul>
-
-          {/* Progress + sign-off bar. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#d4d4d4] bg-[#f9fafb] p-4">
-            <div className="grid gap-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="tech-status-badge tech-status-completed">
-                  {resolved}/{total} Resolved
-                </span>
-                {issueCount > 0 && (
-                  <span className="tech-status-badge tech-status-due-soon">
-                    {issueCount} Issue{issueCount > 1 ? 's' : ''}
-                  </span>
-                )}
-                {naCount > 0 && <span className="tech-status-badge tech-status-scheduled">{naCount} N/A</span>}
-              </div>
-              <p className="text-[11px] font-medium text-[#7c8994]">
-                {readOnly
-                  ? `Signed off${checklist.completedAt ? ` ${new Date(checklist.completedAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''} · read-only view`
-                  : 'Resolve every task (Done / Issue Found / N/A) to enable sign-off.'}
-              </p>
-            </div>
-            {!readOnly && (
-              <button
-                type="button"
-                className="button button-success button-lg"
-                disabled={!allResolved}
-                onClick={handleSignoff}
-              >
-                <CheckCheck size={15} aria-hidden="true" /> Sign Off Checklist
-                {isDrydock ? ' (Chief Engineer PIN)' : ''}
-              </button>
-            )}
-          </div>
         </div>
-      </section>
 
-      {/* Chief Engineer PIN gate — master drydocking sign-off resets the odometer. */}
-      {pinOpen && (
+      {/* Manual timestamp override — backdate to the actual physical inspection time. */}
+      {tsTask && (
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) cancelPin()
+            if (event.target === event.currentTarget) cancelTsEditor()
           }}
         >
-          <section className="signoff-dialog" role="dialog" aria-modal="true" aria-labelledby="drydock-pin-title">
+          <section className="signoff-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-time-title">
             <header className="signoff-header">
               <span className="signoff-icon" aria-hidden="true">
-                <ShieldCheck size={20} />
+                <Pencil size={18} />
               </span>
               <div>
-                <h2 id="drydock-pin-title">Drydocking Sign-off</h2>
+                <h2 id="edit-time-title">Edit Logged Time</h2>
                 <p>
-                  {label} · {engineTab.label} · {activeVessel.name}
+                  {tsTask.label} · {label}
                 </p>
               </div>
-              <button type="button" className="signoff-close" aria-label="Close drydocking sign-off" onClick={cancelPin}>
+              <button
+                type="button"
+                className="signoff-close"
+                aria-label="Close logged time editor"
+                onClick={cancelTsEditor}
+              >
                 <X size={16} />
               </button>
             </header>
 
             <div className="signoff-body">
               <p className="rounded-lg border border-[#e2e7ea] bg-[#f9fafb] p-3 text-sm font-bold leading-relaxed text-[#465560]">
-                Signing off resets {engineTab.label}'s PMS odometer to 0.0 H and starts a fresh 12,000-Hour epoch.
-                Every other routine restarts from its first interval.
+                Override the auto-captured time to the exact moment the physical inspection
+                was conducted. Backdating is allowed; future times are not.
               </p>
-
-              <div className="signoff-field signoff-field-center">
-                <span id="drydock-pin-label">Chief Engineer PIN</span>
-                <div
-                  className="signoff-pin"
-                  onMouseDown={(event) => {
-                    if (event.target !== pinInputRef.current) {
-                      event.preventDefault()
-                      pinInputRef.current?.focus()
-                    }
+              <label className="signoff-field">
+                <span>Inspection Date &amp; Time <em>*</em></span>
+                <input
+                  ref={tsInputRef}
+                  className="signoff-control"
+                  type="datetime-local"
+                  value={tsDraft}
+                  max={toLocalInputValue(new Date().toISOString())}
+                  aria-label="Inspection date and time"
+                  aria-invalid={Boolean(tsError)}
+                  onChange={(event) => {
+                    setTsDraft(event.target.value)
+                    setTsError('')
                   }}
-                >
-                  {[0, 1, 2, 3].map((index) => (
-                    <span key={index} className="signoff-pin-box" aria-hidden="true">
-                      {pin[index] ? '•' : '_'}
-                    </span>
-                  ))}
-                  <input
-                    ref={pinInputRef}
-                    className="signoff-pin-input"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={4}
-                    value={pin}
-                    aria-labelledby="drydock-pin-label"
-                    aria-invalid={Boolean(pinError)}
-                    onChange={(event) => handlePinChange(event.target.value)}
-                  />
-                </div>
-                <span className="signoff-hint">Demo PIN: {crew.chiefPin}</span>
-                {pinError && (
-                  <span className="signoff-error" role="alert">
-                    {pinError}
-                  </span>
-                )}
-              </div>
+                />
+              </label>
+              {tsError && (
+                <span className="signoff-error" role="alert">
+                  {tsError}
+                </span>
+              )}
             </div>
 
             <footer className="signoff-actions">
-              <button type="button" className="button button-secondary" onClick={cancelPin}>
+              <button type="button" className="button button-secondary" onClick={cancelTsEditor}>
                 Cancel
               </button>
               <button
                 type="button"
                 className="button button-success"
-                disabled={pin.length !== 4}
-                onClick={confirmDrydock}
+                disabled={!tsDraft}
+                onClick={saveTsEditor}
               >
-                Confirm &amp; Reset Odometer
+                Save Timestamp
               </button>
             </footer>
           </section>

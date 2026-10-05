@@ -26,9 +26,12 @@ export interface EngineRoomContextValue {
   logs: EngineLog[]
   checklists: PMSChecklist[]
   updateLog: (updated: EngineLog) => void
-  // 3-state condition reporting: picking a non-issue condition clears issue data.
+  // Binary condition reporting: first pick stamps the task's logged time; picking a
+  // non-issue condition clears issue data (the timestamp survives switches/overrides).
   setTaskCondition: (checklistId: string, taskId: string, condition: TaskCondition) => void
   setTaskIssue: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
+  // Manual timestamp override — backdate to when the physical inspection happened.
+  setTaskLoggedAt: (checklistId: string, taskId: string, loggedAt: string) => void
   // Explicit sign-off: snapshots the odometer for the recurring modulo unlock; the
   // 12000H drydock tier additionally resets the engine's odometer epoch to 0.
   signoffChecklist: (checklistId: string) => void
