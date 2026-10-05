@@ -68,10 +68,11 @@ export function WatchLogSignoffModal({ onClose, onSubmit }: WatchLogSignoffModal
     setPinError('')
   }
 
-  // Compliance gate: the Daily Engine Log PDF (letterhead, engine tables, vessel R.O.B.,
-  // remarks, signature block) must be saved to the device before the PIN unlocks.
-  const handleDownload = () => {
-    generateDailyEngineLogPdf({
+  // Compliance gate: the Daily Engine Monitoring Report PDF (corporate letterhead, engine
+  // tables, vessel R.O.B. + remarks, signature block) must be saved to the device before
+  // the PIN unlocks — awaited, so the gate only opens once the file exists.
+  const handleDownload = async () => {
+    await generateDailyEngineLogPdf({
       vesselName: activeVessel.name,
       logDate: dateLabel,
       logs,
