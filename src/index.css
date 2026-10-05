@@ -110,7 +110,9 @@ button:focus-visible { outline: 2px solid #ff8b77; outline-offset: 2px; }
 .filter-tabs button.selected { color: #fff; background: var(--sidebar); }
 .table-scroll { overflow-x: auto; }
 table { width: 100%; min-width: 510px; border-collapse: collapse; }
-th { height: 37px; padding: 0 16px; color: #5d6872; background: #fafafa; font-size: 8px; font-weight: 700; text-align: left; text-transform: uppercase; }
+@layer base {
+  th { height: 37px; padding: 0 16px; color: #5d6872; background: #fafafa; font-size: 8px; font-weight: 700; text-align: left; text-transform: uppercase; }
+}
 td { border-top: 1px solid #e2e2e2; }
 .empty-table { height: 142px; color: #69737d; font-size: 10px; text-align: center; }
 .schedule-panel { display: flex; flex-direction: column; }

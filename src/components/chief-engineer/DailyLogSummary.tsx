@@ -51,28 +51,28 @@ function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
       {/* Two-tier header: grouped super-headers (colspans) + simplified sub-headers. Columns are
           content-sized (no fixed % colgroup) and headers are nowrap, so narrow cells (a lone "0")
           only claim their header's width and no label is starved into a double line. */}
-      <table className="w-full text-left">
+      <table className="w-full text-center">
         <thead>
-          <tr className="whitespace-nowrap bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-500">
-            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 align-middle">Engine</th>
-            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 align-middle">Status</th>
-            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Operations</th>
-            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Fuel Oil (L)</th>
-            <th scope="col" colSpan={2} className="border-l border-slate-200 px-5 py-4 text-center">Added Fluids (L)</th>
-            <th scope="col" colSpan={3} className="border-l border-slate-200 px-5 py-4 text-center">Parameters</th>
+          <tr className="whitespace-nowrap bg-slate-100 uppercase tracking-wide">
+            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 text-center align-middle text-xs font-black text-slate-900">Engine</th>
+            <th scope="col" rowSpan={2} className="bg-slate-100 px-5 py-4 text-center align-middle text-xs font-black text-slate-900">Status</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 bg-slate-100 px-5 py-4 text-center text-xs font-black text-slate-900">Operations</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 bg-slate-100 px-5 py-4 text-center text-xs font-black text-slate-900">Fuel Oil (L)</th>
+            <th scope="col" colSpan={2} className="border-l border-slate-200 bg-slate-100 px-5 py-4 text-center text-xs font-black text-slate-900">Added Fluids (L)</th>
+            <th scope="col" colSpan={3} className="border-l border-slate-200 bg-slate-100 px-5 py-4 text-center text-xs font-black text-slate-900">Parameters</th>
           </tr>
-          <tr className="whitespace-nowrap bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <th scope="col" className="border-l border-slate-200 px-5 py-4">Start</th>
-            <th scope="col" className="px-5 py-4">Stop</th>
-            <th scope="col" className="px-5 py-4">Total</th>
-            <th scope="col" className="border-l border-slate-200 px-5 py-4">Start</th>
-            <th scope="col" className="px-5 py-4">Stop</th>
-            <th scope="col" className="px-5 py-4">Consumed</th>
-            <th scope="col" className="border-l border-slate-200 px-5 py-4">L.O.</th>
-            <th scope="col" className="px-5 py-4">F.W./C.</th>
-            <th scope="col" className="border-l border-slate-200 px-5 py-4">RPM</th>
-            <th scope="col" className="px-5 py-4">Oil (bar)</th>
-            <th scope="col" className="px-5 py-4">Water (°C)</th>
+          <tr className="whitespace-nowrap bg-slate-50 uppercase tracking-wide">
+            <th scope="col" className="border-l border-slate-200 bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Start</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Stop</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Total</th>
+            <th scope="col" className="border-l border-slate-200 bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Start</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Stop</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Consumed</th>
+            <th scope="col" className="border-l border-slate-200 bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">L.O.</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">F.W./C.</th>
+            <th scope="col" className="border-l border-slate-200 bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">RPM</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Oil (bar)</th>
+            <th scope="col" className="bg-slate-50 px-5 py-4 text-center text-[11px] font-semibold text-slate-500">Water (°C)</th>
           </tr>
         </thead>
         <tbody>
@@ -110,12 +110,12 @@ function WatchLogTable({ rows, subtotalLabel, totals }: WatchLogTableProps) {
           <tr className="border-t-2 border-slate-950 bg-slate-50 text-sm font-black uppercase tracking-wide text-[#152f48]">
             {/* Meter columns are intentionally omitted here so the digital summary matches the
                 physical daily report format; the readings remain on the monitoring card. */}
-            <td colSpan={4} className="px-5 py-4 text-right">{subtotalLabel}</td>
+            <td colSpan={2} className="px-5 py-4" />
+            <td colSpan={3} className="px-5 py-4 text-left">{subtotalLabel}</td>
           {/* Running Hours is intentionally blank: running hours are concurrent, per-machine values
               used for maintenance tracking — summing them across engines would misrepresent the
               time window. The consumable sums in this row are per-group subtotals; vessel-wide
               balances live in the Vessel R.O.B. table. */}
-            <td className="px-5 py-4" />
             <td colSpan={2} className="px-5 py-4" />
             <td className="px-5 py-4 tabular-nums">{totals.consumed.toLocaleString()}</td>
             <td className="px-5 py-4 tabular-nums">{totals.lube.toLocaleString()}</td>
