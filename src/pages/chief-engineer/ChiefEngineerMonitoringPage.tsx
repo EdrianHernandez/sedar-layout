@@ -19,7 +19,7 @@ const DISABLED_CLS = 'disabled:cursor-not-allowed disabled:opacity-60'
 
 export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange }: ChiefEngineerMonitoringPageProps) {
   const { activeVessel, logs, updateLog, notify, now } = useChiefEngineer()
-  const { watchStop, hydraulicOilAdded, signoff, setSignoff } = useEngineRoom()
+  const { hydraulicOilAdded, robReceived, signoff, setSignoff } = useEngineRoom()
   const [activeTab, setActiveTab] = useState<MonitorTabId>('ME-PORT')
   const [isWorking, setIsWorking] = useState(false)
   const [stopError, setStopError] = useState(false)
@@ -48,21 +48,24 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
     timersRef.current.push(timer)
   }
 
-  // Validation gate: an open-ended log cannot enter Review mode — WATCH STOP (cut-off) is mandatory.
-  // The Sign-off modal is NOT raised here: the reviewer reads the whole summary first and opens
-  // it manually via SIGN OFF & SUBMIT.
+  // Validation gate: an open-ended log cannot enter Review mode — every OPERATED engine needs
+  // START and STOP (cut-off) times; standby / no-operation rows are never required. The Sign-off
+  // modal is NOT raised here: the reviewer reads the whole summary first and opens it manually
+  // via SIGN OFF & SUBMIT.
+  const hasOpenOperatedLog = logs.some((item) => item.status === 'operated' && (!item.timeStart || !item.timeStop))
   const handleReview = () => {
-    if (!watchStop) {
+    if (hasOpenOperatedLog) {
       setStopError(true)
-      notify('Stop (cut-off) time is required before opening the review.')
+      notify('Stop (cut-off) time is required for running engines before opening the review.')
       return
     }
     setStopError(false)
     setViewMode('review')
   }
 
-  // The modal's SUBMIT & LOCK is the single final action: it records the sign-off pair
-  // (plus optional handover remarks), then locks the log straight to approved (no duty→chief hand-off).
+  // The modal's two-step flow (Submit Report → Security Check) is the single final action: it
+  // records the sign-off pair (plus optional handover remarks), then locks the log straight to
+  // approved (no duty→chief hand-off).
   const handleSignoff = (preparedBy: string, remarks: string) => {
     if (isWorking) return
     const crew = crewByVessel[activeVessel.id]
@@ -104,7 +107,7 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
             onClick={() => setSignoffOpen(true)}
             disabled={isWorking}
             aria-live="polite"
-            title="Open the sign-off sheet (prepared by, verified by, chief PIN) and lock the log"
+            title="Open the sign-off sheet (prepared by, verified by) and submit with the chief's PIN"
             className={`button button-primary button-lg ${DISABLED_CLS} ${isWorking ? 'cursor-wait opacity-80' : ''}`}
           >
             {isWorking ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <FileSignature size={15} strokeWidth={2.5} aria-hidden="true" />}
@@ -194,6 +197,7 @@ export function ChiefEngineerMonitoringPage({ reviewStatus, onReviewStatusChange
           logs={logs}
           hydraulicOilAdded={hydraulicOilAdded}
           masterRob={masterRobByVessel[activeVessel.id]}
+          robReceived={robReceived}
           signoff={signoff}
         />
       ) : (

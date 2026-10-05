@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { EngineLog, WatchLogReviewStatus } from '../types/engineLog'
 import type { PMSChecklist } from '../types/pmsChecklist'
 import type { Vessel } from '../types/vessel'
+import type { MasterRob } from '../data/chiefEngineerMockData'
 
 export interface WatchLogSignoff {
   preparedBy: string
@@ -13,12 +14,10 @@ export interface WatchLogSignoff {
 export interface EngineRoomContextValue {
   reviewStatus: WatchLogReviewStatus
   setReviewStatus: (status: WatchLogReviewStatus) => void
-  watchStart: string
-  watchStop: string
-  setWatchStart: (value: string) => void
-  setWatchStop: (value: string) => void
   hydraulicOilAdded: number
   setHydraulicOilAdded: (value: number) => void
+  robReceived: MasterRob
+  setRobReceived: (field: keyof MasterRob, value: number) => void
   vessels: Vessel[]
   activeVesselId: string
   activeVessel: Vessel

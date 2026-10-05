@@ -1,10 +1,10 @@
-import { useCallback, useEffect, type ReactNode } from 'react'
-import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown, Droplet, Droplets } from 'lucide-react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Minus, Plus, Fuel, Clock, Activity, AlertTriangle, ChevronDown, Droplet, Droplets, Waves } from 'lucide-react'
 import { useEngineRoom } from '../../context/engineRoomStore'
-import type { EngineLog } from '../../types/engineLog'
+import type { EngineLog, EngineStatus } from '../../types/engineLog'
 import type { PMSInterval } from '../../types/pmsChecklist'
 import { ENGINE_TABS, PMS_INTERVALS, type MonitorTabId } from '../../data/chiefEngineerMockData'
-import { computeWatchDurationHours, currentClockTime } from '../../utils/engineLog'
+import { computeRunningHours, computeWatchDurationHours, formatTimeOnly, fuelConsumedBy, localIsoAt } from '../../utils/engineLog'
 
 interface DailyEngineMonitorCardProps {
   log: EngineLog
@@ -58,7 +58,7 @@ function maskTimeInput(raw: string): string {
 
 // On blur, complete and clamp a partial entry to strict HH:MM: "9" → "09:00",
 // "21" → "21:00", "213" → "21:30"; hours ≤ 23, minutes ≤ 59; empty stays empty
-// (the stop-required gate and the NO-OPERATION repair own the empty case).
+// (the review gate owns the empty case — these inputs are disabled off-Operated anyway).
 function completeTimeInput(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 4)
   if (!digits) return ''
@@ -109,8 +109,6 @@ const STATUS_OPTIONS = [
   { id: 'no-operation', label: 'No Operation', bg: 'bg-amber-100', text: 'text-amber-800', shell: 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400', dotRing: 'ring-amber-200' },
   { id: 'standby', label: 'Standby', bg: 'bg-slate-100', text: 'text-slate-700', shell: 'border-slate-300 bg-slate-100 text-slate-700 hover:border-slate-400', dotRing: 'ring-slate-200' },
 ] as const
-
-type EngineStatus = (typeof STATUS_OPTIONS)[number]['id']
 
 function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disabled = false, icon, onChange }: MetricStepperProps) {
   const bump = (direction: 1 | -1) => {
@@ -166,25 +164,55 @@ function MetricStepper({ label, unit, value, min, max, step, decimals = 0, disab
 }
 
 export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, readOnly = false, stopError = false }: DailyEngineMonitorCardProps) {
-  const { watchStart, watchStop, setWatchStart, setWatchStop, hydraulicOilAdded, setHydraulicOilAdded } = useEngineRoom()
+  const { hydraulicOilAdded, setHydraulicOilAdded, robReceived, setRobReceived } = useEngineRoom()
   const isVesselTab = activeTab === 'VESSEL-FLUIDS'
-  const isRunning = Boolean(log.timeStart) && !log.timeStop
-  const hasStarted = Boolean(log.timeStart)
-  const consumption = Math.max(0, log.fuelRobStart - log.fuelRobStop)
+  const isRunning = log.status === 'operated'
+  const consumption = fuelConsumedBy(log)
 
-  const activeStatus: EngineStatus = isRunning ? 'operated' : hasStarted ? 'no-operation' : 'standby'
+  const activeStatus: EngineStatus = log.status
   const activeStatusOption = STATUS_OPTIONS.find((option) => option.id === activeStatus) ?? STATUS_OPTIONS[0]
   const isNoOperation = activeStatus === 'no-operation'
+  // Time AND fuel entry is an OPERATED-only workflow: standby and no-operation disable the time
+  // fields (kept blank) and the R.O.B. inputs (kept equal so CONSUMED reads 0) — the review gate
+  // only ever requires times on operated rows.
+  const canEdit = !readOnly && activeStatus === 'operated'
+  // Like the stop time (empty while the engine runs), the stop level cannot be recorded yet:
+  // the R.O.B. Stop field locks until a cut-off time exists, then unlocks with it.
+  const stopLevelLocked = activeStatus === 'operated' && !log.timeStop
 
-  // Strict auto-calculation: hours run this watch come purely from START TIME → STOP TIME.
-  // 0 while NO OPERATION · null while the times are incomplete · otherwise decimal hours (overnight included).
-  const watchDelta = activeStatus === 'no-operation' ? 0 : computeWatchDurationHours(watchStart, watchStop)
-  // Current Meter = Previous + delta; null until both times exist, so the cards fall back to the previous reading.
+  // Masked drafts for this engine's START / STOP fields: they hold partial keystrokes ("13:0")
+  // that are not yet a valid HH:MM value to commit, and re-sync from the log whenever its window
+  // or id changes (status stamps, tab switches) — adjusted during render, not in an effect.
+  const [draftStart, setDraftStart] = useState(() => formatTimeOnly(log.timeStart, ''))
+  const [draftStop, setDraftStop] = useState(() => formatTimeOnly(log.timeStop, ''))
+  const [windowKey, setWindowKey] = useState(`${log.id}|${log.timeStart}|${log.timeStop}`)
+  const currentWindowKey = `${log.id}|${log.timeStart}|${log.timeStop}`
+  if (windowKey !== currentWindowKey) {
+    setWindowKey(currentWindowKey)
+    setDraftStart(formatTimeOnly(log.timeStart, ''))
+    setDraftStop(formatTimeOnly(log.timeStop, ''))
+  }
+
+  // Commit a masked field: valid HH:MM → today's ISO stamp, empty → null (cleared row).
+  const writeTime = (field: 'timeStart' | 'timeStop', hhmm: string) => {
+    onUpdate({ ...log, [field]: localIsoAt(hhmm) })
+  }
+
+  // STRICT auto-calculation: the card total calls the exact function the Review summary uses
+  // (`computeRunningHours`), so START → STOP hours can never disagree between the two views —
+  // overnight windows roll over midnight and ongoing rows tick live.
+  const totalRunningHours = computeRunningHours(log)
+  // Meter = Previous + closed-window delta: 0 while NO OPERATION · null while the window is
+  // open or incomplete, so the reading stays flat until a cut-off is typed (the reconciliation
+  // effect below writes the derived meter once, and only then).
+  const watchDelta =
+    activeStatus === 'no-operation'
+      ? 0
+      : log.timeStart && log.timeStop
+        ? computeWatchDurationHours(formatTimeOnly(log.timeStart, ''), formatTimeOnly(log.timeStop, ''))
+        : null
   const derivedMeter = watchDelta === null ? null : roundTo(log.meterPrevious + watchDelta, 1)
   const displayMeter = derivedMeter ?? log.meterPrevious
-  // Derived from the rounded meter so "TOTAL RUNNING HOURS" and the PMS odometer can never disagree.
-  const watchHours = derivedMeter === null ? 0 : roundTo(derivedMeter - log.meterPrevious, 1)
-
   const sinceOverhaul = Math.max(0, roundTo(displayMeter - log.lastOverhaulMeter, 1))
   const nextInterval: PMSInterval = PMS_INTERVALS.find((interval) => Number(interval.replace('H', '')) > sinceOverhaul) ?? '6000H'
   const intervalHours = Number(nextInterval.replace('H', ''))
@@ -209,28 +237,43 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
       if (next === activeStatus) return
       const stamp = new Date().toISOString()
       if (next === 'no-operation') {
-        // Explicitly switching to NO OPERATION zeroes consumption once: R.O.B. stop = start,
-        // rpm 0. The meter follows automatically through the reconciliation effect below
-        // (delta 0 ⇒ meter = previous). No auto-sync afterwards, so recorded stop < start
-        // values survive — only a fresh status selection resets them.
-        // The watch window resets to the current wall-clock time with STOP matching START, so the
-        // duration starts at 0. STOP is disabled while NO OPERATION and kept in step with START
-        // by the mirror effect below; total hours remain 0 regardless of the stop value.
-        const clock = currentClockTime()
+        // NO OPERATION blanks the window: both time inputs are disabled on this status, so the
+        // pair clears (TOTAL 0.0, "—" cells in review) instead of stamping a window. It also
+        // zeroes consumption once: R.O.B. stop = start, rpm 0. The meter follows through the
+        // reconciliation effect (delta 0 ⇒ meter = previous). No auto-sync afterwards, so
+        // recorded stop < start values survive — only a fresh selection resets them.
         onUpdate({
           ...log,
-          timeStart: log.timeStart ?? stamp,
-          timeStop: stamp,
+          status: 'no-operation',
+          timeStart: null,
+          timeStop: null,
           fuelRobStop: log.fuelRobStart,
           rpm: 0,
         })
-        setWatchStart(clock)
-        setWatchStop(clock)
       } else if (next === 'operated') {
-        onUpdate({ ...log, timeStart: log.timeStart ?? stamp, timeStop: null })
-      } else onUpdate({ ...log, timeStart: null, timeStop: null })
+        // Operated opens an ongoing window: keep the recorded start (or stamp one now) and
+        // clear the stop so the row reads "ongoing" until a cut-off time is typed. The stop
+        // level is reset with it (consumption 0) — it re-locks too, and is re-recorded only
+        // after the cut-off is entered.
+        onUpdate({
+          ...log,
+          status: 'operated',
+          timeStart: log.timeStart ?? stamp,
+          timeStop: null,
+          fuelRobStop: log.fuelRobStart,
+        })
+      } else
+        onUpdate({
+          ...log,
+          status: 'standby',
+          timeStart: null,
+          timeStop: null,
+          // Standby draws no fuel either: stop snaps back to start so CONSUMED reads 0, and the
+          // disabled R.O.B. inputs below keep the pair identical.
+          fuelRobStop: log.fuelRobStart,
+        })
     },
-    [activeStatus, log, onUpdate, setWatchStart, setWatchStop],
+    [activeStatus, log, onUpdate],
   )
 
   // Single owner of the auto-derived fields: mirror the computed meter so the Review table and
@@ -249,17 +292,6 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
     }
     if (changed) onUpdate(next)
   }, [derivedMeter, log, onUpdate, readOnly])
-
-  // While NO OPERATION, STOP always mirrors START (duration 0 by construction). The equality guard
-  // keeps it loop-free; it also repairs logs that open as NO OPERATION with an empty stop time.
-  // While NO OPERATION, STOP mirrors START (duration 0 by construction) because the stop
-  // input is disabled here — an edited start would otherwise leave a stale, uneditable stop.
-  // The equality guard keeps it loop-free; it also repairs logs that open with an empty stop.
-  useEffect(() => {
-    if (readOnly || !isNoOperation) return
-    if (watchStop === watchStart) return
-    setWatchStop(watchStart)
-  }, [isNoOperation, readOnly, watchStart, watchStop, setWatchStop])
 
   const tabBar = (
     <div
@@ -317,6 +349,58 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
               />
             </div>
           </div>
+          <div className="mt-5">
+            <span className="section-header">
+              <Fuel size={16} className="text-[#ff4d2f]" aria-hidden="true" />
+              <span>Received This Shift (Bunkering / Refills)</span>
+            </span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MetricStepper
+                label="Fuel Oil Received"
+                unit="L"
+                value={robReceived.fuelOil}
+                min={0}
+                max={9999}
+                step={5}
+                disabled={readOnly}
+                icon={<Fuel size={14} className="text-amber-600" aria-hidden="true" />}
+                onChange={(value) => setRobReceived('fuelOil', value)}
+              />
+              <MetricStepper
+                label="Lube Oil Received"
+                unit="L"
+                value={robReceived.lubeOil}
+                min={0}
+                max={9999}
+                step={5}
+                disabled={readOnly}
+                icon={<Droplet size={14} className="text-sky-600" aria-hidden="true" />}
+                onChange={(value) => setRobReceived('lubeOil', value)}
+              />
+              <MetricStepper
+                label="Hydraulic Oil Received"
+                unit="L"
+                value={robReceived.hydraulicOil}
+                min={0}
+                max={9999}
+                step={5}
+                disabled={readOnly}
+                icon={<Droplets size={14} className="text-teal-600" aria-hidden="true" />}
+                onChange={(value) => setRobReceived('hydraulicOil', value)}
+              />
+              <MetricStepper
+                label="Fresh Water Received"
+                unit="L"
+                value={robReceived.freshWater}
+                min={0}
+                max={9999}
+                step={5}
+                disabled={readOnly}
+                icon={<Waves size={14} className="text-blue-600" aria-hidden="true" />}
+                onChange={(value) => setRobReceived('freshWater', value)}
+              />
+            </div>
+          </div>
         </div>
       </section>
     )
@@ -371,13 +455,21 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="text"
                   inputMode="numeric"
                   maxLength={5}
-                  placeholder="__:__"
+                  placeholder="--:--"
                   aria-label="Start time"
-                  value={watchStart}
-                  disabled={readOnly}
-                  onChange={(event) => setWatchStart(maskTimeInput(event.target.value))}
-                  onBlur={() => setWatchStart(completeTimeInput(watchStart))}
-                  className={`${TIME_INPUT_CLS} peer`}
+                  value={draftStart}
+                  disabled={!canEdit}
+                  onChange={(event) => {
+                    const masked = maskTimeInput(event.target.value)
+                    setDraftStart(masked)
+                    if (localIsoAt(masked)) writeTime('timeStart', masked)
+                  }}
+                  onBlur={() => {
+                    const completed = completeTimeInput(draftStart)
+                    setDraftStart(completed)
+                    if (completed !== formatTimeOnly(log.timeStart, '')) writeTime('timeStart', completed)
+                  }}
+                  className={`${TIME_INPUT_CLS} peer${stopError && activeStatus === 'operated' && !log.timeStart ? ' border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
                 />
                 <span
                   className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black tracking-[.12em] text-slate-500 peer-disabled:border-slate-300 peer-disabled:bg-slate-100 peer-disabled:text-slate-400"
@@ -386,6 +478,9 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   24H
                 </span>
               </div>
+              {stopError && activeStatus === 'operated' && !log.timeStart && (
+                <span className="text-[10px] font-bold text-red-600">A start time is required before review.</span>
+              )}
             </label>
             <label className="grid gap-1">
               <span className={ROW_LABEL_CLS}>Stop Time (Cut-off)</span>
@@ -394,13 +489,21 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="text"
                   inputMode="numeric"
                   maxLength={5}
-                  placeholder="__:__"
+                  placeholder="--:--"
                   aria-label="Stop time (cut-off)"
-                  value={watchStop}
-                  disabled={readOnly || isNoOperation}
-                  onChange={(event) => setWatchStop(maskTimeInput(event.target.value))}
-                  onBlur={() => setWatchStop(completeTimeInput(watchStop))}
-                  className={`${TIME_INPUT_CLS} peer${stopError && !watchStop ? ' border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
+                  value={draftStop}
+                  disabled={!canEdit}
+                  onChange={(event) => {
+                    const masked = maskTimeInput(event.target.value)
+                    setDraftStop(masked)
+                    if (localIsoAt(masked)) writeTime('timeStop', masked)
+                  }}
+                  onBlur={() => {
+                    const completed = completeTimeInput(draftStop)
+                    setDraftStop(completed)
+                    if (completed !== formatTimeOnly(log.timeStop, '')) writeTime('timeStop', completed)
+                  }}
+                  className={`${TIME_INPUT_CLS} peer${stopError && activeStatus === 'operated' && !log.timeStop ? ' border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
                 />
                 <span
                   className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-black tracking-[.12em] text-slate-500 peer-disabled:border-slate-300 peer-disabled:bg-slate-100 peer-disabled:text-slate-400"
@@ -409,7 +512,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   24H
                 </span>
               </div>
-              {stopError && !watchStop && (
+              {stopError && activeStatus === 'operated' && !log.timeStop && (
                 <span className="text-[10px] font-bold text-red-600">A stop / cut-off time is required before review.</span>
               )}
             </label>
@@ -417,7 +520,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
             <div className="grid gap-1">
               <span className={ROW_LABEL_CLS}>Total Running Hours</span>
               <div className="flex h-14 w-full items-center justify-center gap-1.5 rounded-lg border-2 border-emerald-300 bg-emerald-50 px-4">
-                <strong className="text-xl font-black tabular-nums leading-none text-emerald-700">{watchHours.toFixed(1)}</strong>
+                <strong className="text-xl font-black tabular-nums leading-none text-emerald-700">{(totalRunningHours ?? 0).toFixed(1)}</strong>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">HRS</span>
               </div>
             </div>
@@ -508,7 +611,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="button"
                   aria-label="Decrease ROB start"
                   onClick={() => bumpRobStart(-1)}
-                  disabled={isNoOperation || readOnly}
+                  disabled={!canEdit}
                   className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Minus size={24} strokeWidth={3} />
@@ -521,7 +624,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                     step={10}
                     aria-label="ROB Start"
                     value={log.fuelRobStart}
-                    disabled={isNoOperation || readOnly}
+                    disabled={!canEdit}
                     onChange={(event) => {
                       const next = Number(event.target.value)
                       onUpdate({ ...log, fuelRobStart: Number.isFinite(next) && next >= 0 ? next : 0 })
@@ -537,7 +640,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="button"
                   aria-label="Increase ROB start"
                   onClick={() => bumpRobStart(1)}
-                  disabled={isNoOperation || readOnly}
+                  disabled={!canEdit}
                   className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus size={24} strokeWidth={3} />
@@ -552,7 +655,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="button"
                   aria-label="Decrease ROB stop"
                   onClick={() => bumpRobStop(-1)}
-                  disabled={isNoOperation || readOnly}
+                  disabled={!canEdit || !log.timeStop}
                   className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Minus size={24} strokeWidth={3} />
@@ -566,7 +669,7 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                     step={10}
                     aria-label="ROB Stop"
                     value={log.fuelRobStop}
-                    disabled={isNoOperation || readOnly}
+                    disabled={!canEdit || !log.timeStop}
                     onChange={(event) => {
                       const next = Number(event.target.value)
                       // Locked as you type: stop can never exceed the current start.
@@ -583,12 +686,15 @@ export function DailyEngineMonitorCard({ log, activeTab, onTabChange, onUpdate, 
                   type="button"
                   aria-label="Increase ROB stop"
                   onClick={() => bumpRobStop(1)}
-                  disabled={isNoOperation || readOnly}
+                  disabled={!canEdit || !log.timeStop}
                   className="flex w-16 items-center justify-center bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus size={24} strokeWidth={3} />
                 </button>
               </div>
+              {stopLevelLocked && (
+                <span className="mt-2 text-center text-[10px] font-semibold text-slate-400">Enter the stop (cut-off) time first.</span>
+              )}
             </div>
 
             <div className="flex h-full flex-col rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">

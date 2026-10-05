@@ -4,11 +4,12 @@ import {
   createInitialEngineLogs,
   createInitialPmsChecklists,
   defaultVesselId,
+  robReceivedByVessel as robReceivedSeed,
 } from '../data/chiefEngineerMockData'
 import type { EngineLog, WatchLogReviewStatus } from '../types/engineLog'
+import type { MasterRob } from '../data/chiefEngineerMockData'
 import type { PMSChecklist } from '../types/pmsChecklist'
 import type { Vessel } from '../types/vessel'
-import { currentClockTime } from '../utils/engineLog'
 import { EngineRoomContext, type EngineRoomContextValue, type WatchLogSignoff } from './engineRoomStore'
 
 function buildByVessel<T>(create: (vessel: Vessel) => T[]): Record<string, T[]> {
@@ -20,13 +21,13 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
   const [logsByVessel, setLogsByVessel] = useState<Record<string, EngineLog[]>>(() => buildByVessel(createInitialEngineLogs))
   const [checklistsByVessel, setChecklistsByVessel] = useState<Record<string, PMSChecklist[]>>(() => buildByVessel(createInitialPmsChecklists))
   const [reviewStatus, setReviewStatus] = useState<WatchLogReviewStatus>('draft')
-  const [watchStart, setWatchStart] = useState(currentClockTime)
-  const [watchStop, setWatchStop] = useState('')
   // Vessel-level hydraulic oil (steering gear & winch), tracked per vessel like the engine logs.
   const [hydraulicOilByVessel, setHydraulicOilByVessel] = useState<Record<string, number>>(() =>
     Object.fromEntries(assignedVessels.map((vessel) => [vessel.id, 0])),
   )
-  // Per-vessel sign-off record written by the kiosk SUBMIT & LOCK flow (prepared/verified/PIN).
+  // Received during the watch (bunkering / drum deliveries) — feeds the R.O.B. received column.
+  const [robReceivedByVessel, setRobReceivedByVessel] = useState<Record<string, MasterRob>>(robReceivedSeed)
+  // Per-vessel sign-off record written by the kiosk two-step flow (details → Security Check PIN).
   const [signoffByVessel, setSignoffByVessel] = useState<Record<string, WatchLogSignoff>>({})
   const [now, setNow] = useState(() => new Date())
 
@@ -46,6 +47,15 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
 
   const setHydraulicOilAdded = useCallback(
     (value: number) => setHydraulicOilByVessel((current) => ({ ...current, [activeVesselId]: value })),
+    [activeVesselId],
+  )
+
+  const setRobReceived = useCallback(
+    (field: keyof MasterRob, value: number) =>
+      setRobReceivedByVessel((current) => ({
+        ...current,
+        [activeVesselId]: { ...(current[activeVesselId] ?? robReceivedSeed[activeVesselId]), [field]: value },
+      })),
     [activeVesselId],
   )
 
@@ -86,12 +96,10 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
     return {
       reviewStatus,
       setReviewStatus,
-      watchStart,
-      watchStop,
-      setWatchStart,
-      setWatchStop,
       hydraulicOilAdded: hydraulicOilByVessel[activeVesselId] ?? 0,
       setHydraulicOilAdded,
+      robReceived: robReceivedByVessel[activeVesselId] ?? robReceivedSeed[activeVesselId],
+      setRobReceived,
       vessels: assignedVessels,
       activeVesselId,
       activeVessel,
@@ -105,7 +113,7 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
       signoff: signoffByVessel[activeVesselId] ?? null,
       setSignoff,
     }
-  }, [reviewStatus, watchStart, watchStop, hydraulicOilByVessel, setHydraulicOilAdded, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, toggleTask, saveRemark, signoffByVessel, setSignoff])
+  }, [reviewStatus, hydraulicOilByVessel, setHydraulicOilAdded, robReceivedByVessel, setRobReceived, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, toggleTask, saveRemark, signoffByVessel, setSignoff])
 
   return <EngineRoomContext.Provider value={value}>{children}</EngineRoomContext.Provider>
 }

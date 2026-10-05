@@ -1,4 +1,4 @@
-import type { EngineId, EngineLog, WatchLogHistoryEntry, WatchLogSummary } from '../types/engineLog'
+import type { EngineId, EngineLog, EngineStatus, WatchLogHistoryEntry, WatchLogSummary } from '../types/engineLog'
 import type { PMSInterval, PMSChecklist } from '../types/pmsChecklist'
 import type { Vessel } from '../types/vessel'
 
@@ -13,7 +13,7 @@ export const defaultVesselId = assignedVessels[0].id
 export const consoleTitle = 'Engine Room Console'
 
 // Kiosk crew roster: each vessel's isolated database carries its own duty engineers,
-// designated chief engineer, and the chief's 4-digit authorisation PIN for SUBMIT & LOCK.
+// designated chief engineer, and the chief's 4-digit authorisation PIN for the Security Check.
 export interface VesselCrew {
   chiefEngineer: string
   chiefPin: string
@@ -82,16 +82,11 @@ function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function todayAt(hour: number, minute: number): string {
-  const date = new Date()
-  date.setHours(hour, minute, 0, 0)
-  return date.toISOString()
-}
-
 interface LogSeed {
   engineId: EngineId
   engineClass: 'main' | 'auxiliary'
   label: string
+  status: EngineStatus
   timeStart: string | null
   timeStop: string | null
   rpm: number
@@ -106,17 +101,19 @@ interface LogSeed {
   lastOverhaulMeter: number
 }
 
-// Distinct per-engine windows demonstrate that TIME START / TIME STOP are independent per row
-// (not one global watch window); GEN 2 stays standby (null / null → "—" cells).
+// STATUS is explicit per row (operated / no-operation / standby) instead of being derived from
+// the times, so typing a cut-off time on an Operated row never flips its chip. Non-operated rows
+// carry NO times (null / null → "—" cells, TOTAL 0.0): the time inputs are disabled for standby
+// and no-operation, so the seeds stay blank like the form enforces at runtime. GEN 2 seeds
+// standby; an operated row is created by selecting Operated on the form.
 // R.O.B. figures reflect the Service Tank (Day Tank) feeding each engine — the Daily Engine
 // Monitoring form tracks day-tank levels, not master/bunker storage (that lives in the
-// masterRobByVessel ledger below). Stop mirrors start because the seeded engines carry both
-// time fields: NO OPERATION status implies zero consumption (stop = start).
+// masterRobByVessel ledger below).
 const engineLogSeeds: LogSeed[] = [
-  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', timeStart: todayAt(14, 0), timeStop: todayAt(15, 0), rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
-  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', timeStart: todayAt(15, 0), timeStop: todayAt(16, 30), rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
-  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', timeStart: todayAt(8, 0), timeStop: todayAt(16, 0), rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
-  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
+  { engineId: 'ME-PORT', engineClass: 'main', label: 'M/E PORT', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.2, waterTemp: 82, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14500.0, meterCurrent: 14500.0, lastOverhaulMeter: 14100 },
+  { engineId: 'ME-STBD', engineClass: 'main', label: 'M/E STBD', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 4.1, waterTemp: 84, fuelRobStart: 850, fuelRobStop: 850, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 14462.5, meterCurrent: 14462.5, lastOverhaulMeter: 14200 },
+  { engineId: 'AUX-1', engineClass: 'auxiliary', label: 'GEN 1', status: 'no-operation', timeStart: null, timeStop: null, rpm: 0, oilPressure: 3.8, waterTemp: 74, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 6420.0, meterCurrent: 6420.0, lastOverhaulMeter: 6000 },
+  { engineId: 'AUX-2', engineClass: 'auxiliary', label: 'GEN 2', status: 'standby', timeStart: null, timeStop: null, rpm: 0, oilPressure: 0, waterTemp: 26, fuelRobStart: 450, fuelRobStop: 450, lubeOilAdded: 0, fwCoolantAdded: 0, meterPrevious: 5110.3, meterCurrent: 5110.3, lastOverhaulMeter: 5000 },
 ]
 
 // Master (vessel-wide) fluid inventory at the start of the watch — the physical report's
@@ -130,6 +127,11 @@ export interface MasterRob {
 
 export const masterRobByVessel: Record<string, MasterRob> = Object.fromEntries(
   assignedVessels.map((vessel) => [vessel.id, { fuelOil: 5000, lubeOil: 1500, hydraulicOil: 400, freshWater: 2000 }]),
+)
+
+// Received during the watch (bunkering / drum deliveries) — editable on the Vessel Fluids tab.
+export const robReceivedByVessel: Record<string, MasterRob> = Object.fromEntries(
+  assignedVessels.map((vessel) => [vessel.id, { fuelOil: 1200, lubeOil: 0, hydraulicOil: 0, freshWater: 500 }]),
 )
 
 export function createInitialEngineLogs(vessel: Vessel): EngineLog[] {

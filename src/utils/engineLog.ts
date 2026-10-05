@@ -1,14 +1,28 @@
 import type { EngineLog } from '../types/engineLog'
 
 export function computeRunningHours(log: EngineLog, now: Date = new Date()): number | null {
+  // Only an OPERATED engine accumulates running hours: standby / no-operation rows compute
+  // strictly 0.0 wherever this is consumed (monitoring card TOTAL, review rows, home card).
+  if (log.status !== 'operated') return 0
   if (!log.timeStart) return null
   const start = new Date(log.timeStart)
   if (Number.isNaN(start.getTime())) return null
   const end = log.timeStop ? new Date(log.timeStop) : now
   if (Number.isNaN(end.getTime())) return null
-  const diffMs = end.getTime() - start.getTime()
+  let diffMs = end.getTime() - start.getTime()
+  // Overnight runs (stop before start) roll over midnight, matching computeWatchDurationHours.
+  // An ongoing row whose start is still in the future counts as 0 rather than ~24h.
+  if (diffMs < 0) diffMs = log.timeStop ? diffMs + 86_400_000 : 0
   if (diffMs <= 0) return 0
   return Math.round((diffMs / 3_600_000) * 10) / 10
+}
+
+// Fuel drawn by this engine during the watch: standby / no-operation rows force 0 (their ROB
+// stop equals ROB start — no fuel was drawn for this engine), while operated rows clamp at 0
+// so an inverted window can never show negative consumption.
+export function fuelConsumedBy(log: EngineLog): number {
+  if (log.status !== 'operated') return 0
+  return Math.max(0, log.fuelRobStart - log.fuelRobStop)
 }
 
 export function formatClock(iso: string | null): string {
@@ -44,6 +58,19 @@ export function computeWatchDurationHours(start: string, stop: string): number |
 // Current local wall-clock time as an HH:MM watch value (e.g. "14:32").
 export function currentClockTime(date: Date = new Date()): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// Today's ISO timestamp at a strict "HH:MM" watch value (e.g. "13:09" → today 13:09 local);
+// partial or impossible values return null so an invalid keystroke never reaches the log.
+export function localIsoAt(hhmm: string): string | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(hhmm)
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (hours > 23 || minutes > 59) return null
+  const date = new Date()
+  date.setHours(hours, minutes, 0, 0)
+  return date.toISOString()
 }
 
 // Local HH:MM for a stored ISO timestamp (e.g. "14:00"); missing/invalid → fallback.
