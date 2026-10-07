@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Camera, Check, CheckCheck, Pencil, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Camera, Check, CheckCheck, Trash2 } from 'lucide-react'
 import type { PMSTask, TaskCondition } from '../../types/pmsChecklist'
 import {
-  consoleTitle,
   MACHINERY_TABS,
   PMS_INTERVALS,
   PMS_INTERVAL_HOURS,
@@ -17,10 +16,80 @@ interface ConditionOption {
   label: string
   icon: ReactNode
   active: string
-  idle: string
 }
 
-const IDLE_CLS = 'border-[#cdd3d8] bg-white text-[#526475] hover:bg-[#f4f6f7]'
+// Masked text inputs replace the native pickers so the display format is
+// locale-proof: date always renders DD/MM/YYYY, time always 24-hour HH:mm
+// (22:18, never 10:18 PM) — no calendar/clock icons exist to hide.
+const MASKED_INPUT_CLS =
+  'w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-center text-[11px] font-bold tabular-nums text-[#283746] outline-none focus:outline-none transition hover:border-[#cdd3d8] hover:bg-white focus:border-[#5b8fb5] focus:bg-white disabled:cursor-not-allowed disabled:text-[#9aa7b2]'
+
+const maskDateDigits = (input: string) => {
+  const digits = input.replace(/\D/g, '').slice(0, 8)
+  if (!digits) return ''
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/')
+}
+
+const maskTimeDigits = (input: string) => {
+  const digits = input.replace(/\D/g, '').slice(0, 4)
+  if (!digits) return ''
+  const hours = digits.slice(0, 2)
+  const minutes = digits.slice(2)
+  return minutes ? `${hours}:${minutes}` : hours
+}
+
+interface MaskedInputProps {
+  value: string
+  placeholder: string
+  maxLength: number
+  ariaLabel: string
+  disabled?: boolean
+  mask: (input: string) => string
+  parse: (display: string) => Date | null
+  onCommit: (date: Date) => void
+}
+
+// Controlled digit-masked field: the draft lives locally so typing is free, a
+// fully valid value commits immediately (subject to the future-time guard), and
+// blur reverts half-typed text to the stored value.
+function MaskedInput({
+  value,
+  placeholder,
+  maxLength,
+  ariaLabel,
+  disabled,
+  mask,
+  parse,
+  onCommit,
+}: MaskedInputProps) {
+  const [draft, setDraft] = useState(value)
+  const [synced, setSynced] = useState(value)
+  // Re-sync during render when the stored value changes (status auto-stamp,
+  // another field's commit) — no effect needed, typing never clobbers the draft.
+  if (value !== synced) {
+    setSynced(value)
+    setDraft(value)
+  }
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      value={draft}
+      disabled={disabled}
+      onChange={(event) => {
+        const next = mask(event.target.value)
+        setDraft(next)
+        const parsed = parse(next)
+        if (parsed) onCommit(parsed)
+      }}
+      onBlur={() => setDraft(value)}
+      className={MASKED_INPUT_CLS}
+    />
+  )
+}
 
 // Module scope (not render): a datetime-local value is invalid if it lies in the
 // future — inspections can be backdated, never scheduled ahead.
@@ -29,23 +98,21 @@ const isFutureLocalTime = (localValue: string): boolean => {
   return !Number.isNaN(time) && time > Date.now()
 }
 
-// Strict binary condition reporting: every task must be resolved (Done / Issue Found)
-// before the checklist can be submitted. Issue Found reveals the mandatory remarks
-// and evidence inputs below its row.
+// Strict binary condition reporting: every task must be resolved (Done / Issue)
+// before the checklist can be submitted. The Issue state turns the REMARKS cell
+// into a required defect description with photo evidence.
 const CONDITION_OPTIONS: ConditionOption[] = [
   {
     value: 'done',
     label: 'Done',
     icon: <Check size={15} aria-hidden="true" />,
-    active: 'border-[#177342] bg-[#d9f1e3] text-[#116437]',
-    idle: IDLE_CLS,
+    active: 'bg-green-600 text-white',
   },
   {
     value: 'issue',
-    label: 'Issue Found',
+    label: 'Issue',
     icon: <AlertTriangle size={15} aria-hidden="true" />,
-    active: 'border-[#e0b64a] bg-[#fff0bd] text-[#775000]',
-    idle: IDLE_CLS,
+    active: 'bg-red-600 text-white',
   },
 ]
 
@@ -53,26 +120,9 @@ const CONDITION_OPTIONS: ConditionOption[] = [
 // START/VIEW CHECKLIST navigation (never expanded in place on the dashboard).
 export function ChiefEngineerPmsExecutePage() {
   const { engineId: engineParam, interval: intervalParam } = useParams()
-  const { logs, checklists, setTaskCondition, setTaskIssue, setTaskLoggedAt, notify } =
+  const { logs, checklists, setTaskCondition, setTaskRemarks, setTaskLoggedAt, notify } =
     useChiefEngineer()
   const navigate = useNavigate()
-  // Manual timestamp override: which task is being edited + its datetime-local draft.
-  const [tsTask, setTsTask] = useState<PMSTask | null>(null)
-  const [tsDraft, setTsDraft] = useState('')
-  const [tsError, setTsError] = useState('')
-  const tsInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!tsTask) return
-    tsInputRef.current?.focus()
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setTsTask(null)
-      setTsError('')
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [tsTask])
 
   // Route validation: unknown engine or interval (or a routine that is neither due
   // nor signed off — a stale deep link) bounces back to the dashboard.
@@ -93,6 +143,14 @@ export function ChiefEngineerPmsExecutePage() {
   const resolved = checklist.tasks.filter((task) => task.condition !== 'pending').length
   const issueCount = checklist.tasks.filter((task) => task.condition === 'issue').length
   const allResolved = resolved === total
+  // ISSUE rows must describe the defect before the routine can be reviewed.
+  const missingRemarks = checklist.tasks.filter((task) => task.condition === 'issue' && !task.findings?.trim()).length
+  const reviewBlockedReason =
+    !allResolved
+      ? 'Resolve every task (Done / Issue Found) to continue.'
+      : missingRemarks > 0
+        ? 'Describe the defect on every Issue row to continue.'
+        : undefined
   const nextDue = nextDueHours(hours, checklist.completedOdometer)
   const remaining = remainingToDue(odometer, hours, checklist.completedOdometer)
   const label = PMS_INTERVAL_LABELS[interval]
@@ -100,47 +158,57 @@ export function ChiefEngineerPmsExecutePage() {
   // Submission moved to the full-screen Review Summary step — this button only
   // routes there once every task carries a condition.
   const openReview = () => {
-    if (readOnly || !allResolved) return
+    if (readOnly || !allResolved || missingRemarks > 0) return
     navigate(`/chief-engineer/pms/execute/${engineTab.id}/${interval}/review`)
   }
 
-  // Compact logged-time display: "Oct 5, 10:45 AM".
-  const formatLoggedAt = (iso: string) =>
-    new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-
-  // datetime-local needs a local "YYYY-MM-DDTHH:mm" string (no timezone, no seconds).
-  const toLocalInputValue = (iso: string) => {
+  // Locale-proof display formats for the masked DATE / TIME cells.
+  const pad2 = (value: number) => String(value).padStart(2, '0')
+  const formatDdMmYyyy = (iso?: string) => {
+    if (!iso) return ''
     const date = new Date(iso)
-    const pad = (value: number) => String(value).padStart(2, '0')
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`
+  }
+  const formatHhMm = (iso?: string) => {
+    if (!iso) return ''
+    const date = new Date(iso)
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
   }
 
-  const openTsEditor = (task: PMSTask) => {
-    if (!task.loggedAt) return
-    setTsDraft(toLocalInputValue(task.loggedAt))
-    setTsError('')
-    setTsTask(task)
-  }
+  // Local "YYYY-MM-DDTHH:mm" stamp for the future-time guard — inspections can be
+  // backdated, never scheduled ahead.
+  const toLocalStamp = (date: Date) =>
+    `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
 
-  const cancelTsEditor = () => {
-    setTsTask(null)
-    setTsError('')
-  }
-
-  const saveTsEditor = () => {
-    if (!tsTask) return
-    const date = new Date(tsDraft)
-    if (Number.isNaN(date.getTime())) {
-      setTsError('Pick a valid date and time.')
+  const commitLoggedAt = (task: PMSTask, date: Date) => {
+    if (isFutureLocalTime(toLocalStamp(date))) {
+      notify('An inspection cannot be logged in the future.')
       return
     }
-    if (isFutureLocalTime(tsDraft)) {
-      setTsError('An inspection cannot be logged in the future.')
-      return
-    }
-    setTaskLoggedAt(checklist.id, tsTask.id, date.toISOString())
-    setTsTask(null)
-    setTsError('')
+    setTaskLoggedAt(checklist.id, task.id, date.toISOString())
+  }
+
+  // "DD/MM/YYYY" → Date, folded onto the row's existing time-of-day (now when
+  // unset). Round-trip check rejects impossible dates like 32/10/2026.
+  const parseDateText = (task: PMSTask, display: string): Date | null => {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display)
+    if (!match) return null
+    const day = Number(match[1])
+    const month = Number(match[2])
+    const year = Number(match[3])
+    const base = task.loggedAt ? new Date(task.loggedAt) : new Date()
+    const date = new Date(year, month - 1, day, base.getHours(), base.getMinutes())
+    if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) return null
+    return date
+  }
+
+  // Strict 24-hour "HH:mm" → Date, folded onto the row's existing date (today
+  // when unset). The regex admits 00:00–23:59 only — no AM/PM anywhere.
+  const parseTimeText = (task: PMSTask, display: string): Date | null => {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(display)
+    if (!match) return null
+    const base = task.loggedAt ? new Date(task.loggedAt) : new Date()
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate(), Number(match[1]), Number(match[2]))
   }
 
   const attachPhoto = (task: PMSTask, file: File | undefined) => {
@@ -154,259 +222,247 @@ export function ChiefEngineerPmsExecutePage() {
       return
     }
     const reader = new FileReader()
-    reader.onload = () => setTaskIssue(checklist.id, task.id, task.findings ?? '', String(reader.result))
+    reader.onload = () => setTaskRemarks(checklist.id, task.id, task.findings ?? '', String(reader.result))
     reader.onerror = () => notify('Could not read that file — try another photo.')
     reader.readAsDataURL(file)
   }
 
   return (
     <>
-      <div className="tech-dashboard-header">
-        <div className="tech-header-text">
-          <span className="tech-header-kicker">{consoleTitle} · PMS Task Execution</span>
-          <h1>{label}</h1>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>
-              {engineTab.label} · {engineTab.className === 'main' ? 'Main Engine' : 'Auxiliary Generator'} · Odometer
-              at execution: {odometer.toFixed(1)} HRS
-            </span>
+      {/* Full-bleed sticky top-bar: solid background + rule so checklist rows scroll
+          cleanly underneath; -mx/px restores the workspace padding so the inner
+          content sits flush with the table below (same gutters as the monitoring page).
+          Built with pure Tailwind — the legacy .tech-* header rules are unlayered and
+          would outbid layered utilities, blocking the condensed styling. */}
+      <header className="sticky top-0 z-10 -mx-5 border-b border-[#e2e7ea] bg-white px-5 py-2.5 max-md:-mx-3.5 max-md:px-3.5">
+        <div className="flex w-full items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="truncate text-[19px] font-bold leading-tight text-[#152f48]">
+              {engineTab.label} — {label}
+            </h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-[#5f6873]">
+              <span className="tabular-nums">Odometer: {odometer.toFixed(1)} HRS</span>
+              {readOnly ? (
+                <span className="tech-status-badge tech-status-completed">
+                  Signed Off · Next due {nextDue.toLocaleString('en-US')} H
+                </span>
+              ) : due ? (
+                <span className="tech-status-badge tech-status-overdue inline-flex items-center gap-1.5">
+                  <AlertTriangle size={12} aria-hidden="true" /> Due Now
+                </span>
+              ) : (
+                <span className="tech-status-badge tech-status-scheduled">
+                  Scheduled · {remaining.toFixed(1)} H remaining
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <Link
+              to="/chief-engineer/pms"
+              className="group inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-[#5f6873] transition-colors hover:text-[#283746]"
+            >
+              <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+              Back to Dashboard
+            </Link>
             {readOnly ? (
-              <span className="tech-status-badge tech-status-completed">
-                Signed Off · Next due {nextDue.toLocaleString('en-US')} H
-              </span>
-            ) : due ? (
-              <span className="tech-status-badge tech-status-overdue inline-flex items-center gap-1.5">
-                <AlertTriangle size={12} aria-hidden="true" /> Due Now
+              <span className="whitespace-nowrap text-[11px] font-bold tabular-nums text-[#5f6873]">
+                {resolved}/{total} Resolved
               </span>
             ) : (
-              <span className="tech-status-badge tech-status-scheduled">
-                Scheduled · {remaining.toFixed(1)} H remaining
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="tech-header-actions">
-          <span className="tech-status-badge tech-status-completed">
-            {resolved}/{total} Resolved
-          </span>
-          {issueCount > 0 && (
-            <span className="tech-status-badge tech-status-due-soon">
-              {issueCount} Issue{issueCount > 1 ? 's' : ''}
-            </span>
-          )}
-          <Link to="/chief-engineer/pms" className="button button-secondary button-lg">
-            <ArrowLeft size={15} aria-hidden="true" /> Back to Dashboard
-          </Link>
-          {!readOnly && (
-            <button
-              type="button"
-              className="button button-success button-lg"
-              disabled={!allResolved}
-              title={allResolved ? undefined : 'Resolve every task (Done / Issue Found) to continue.'}
-              onClick={openReview}
-            >
-              <CheckCheck size={15} aria-hidden="true" /> Review Summary
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Flat task list on the page background — no panel card, no duplicate inner header
-          (the main page header above owns the title and odometer metadata). */}
-      <div className="grid gap-4">
-        <ul className="border-y border-[#e2e7ea]">
-          {checklist.tasks.map((task, index) => (
-            <li
-              key={task.id}
-              className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-[#e2e7ea] py-3 last:border-b-0"
-            >
-              <div className="flex min-w-0 flex-1 items-start gap-2">
-                <span className="w-5 shrink-0 text-right text-xs font-black text-[#7c8994]">{index + 1}.</span>
-                <p className="text-sm font-bold leading-snug text-[#283746]">{task.label}</p>
-              </div>
-
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <div
-                  role="group"
-                  aria-label={`Condition for: ${task.label}`}
-                  className="inline-flex gap-1.5"
-                >
-                  {CONDITION_OPTIONS.map((option) => {
-                    const active = task.condition === option.value
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        aria-pressed={active}
-                        disabled={readOnly}
-                        onClick={() => setTaskCondition(checklist.id, task.id, option.value)}
-                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                          active ? option.active : option.idle
-                        }`}
-                      >
-                        {option.icon}
-                        {option.label}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Auto-captured inspection time — tucked under the buttons, right-aligned. */}
-                {task.condition !== 'pending' && task.loggedAt && (
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-[10px] font-bold text-[#5f6873]">
-                      Logged: {formatLoggedAt(task.loggedAt)}
-                    </span>
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        aria-label={`Edit logged time for: ${task.label}`}
-                        title="Edit logged time"
-                        onClick={() => openTsEditor(task)}
-                        className="grid size-5 place-items-center rounded border border-[#cdd3d8] bg-white text-[#526475] transition hover:bg-[#f4f6f7]"
-                      >
-                        <Pencil size={11} aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
+              <button
+                type="button"
+                className="button button-success button-lg disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!allResolved || missingRemarks > 0}
+                title={reviewBlockedReason}
+                onClick={openReview}
+              >
+                <CheckCheck size={15} aria-hidden="true" /> Review Summary ({resolved}/{total}){' '}
+                {issueCount > 0 && (
+                  <span className="font-black text-[#ffe8a3]">
+                    • {issueCount} Issue{issueCount > 1 ? 's' : ''}
+                  </span>
                 )}
-              </div>
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
 
-                {/* Conditional defect inputs — rendered only for Issue Found tasks. */}
-                {task.condition === 'issue' && (
-                  <div className="basis-full grid gap-3 rounded-lg border border-[#efd181] bg-[#fffbe9] p-3">
-                    <label className="grid gap-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#775000]">
-                        Remarks / Findings <em className="not-italic text-[#b5451d]">*</em>
-                      </span>
-                      <textarea
-                        rows={3}
-                        required
-                        value={task.findings ?? ''}
-                        disabled={readOnly}
-                        onChange={(event) => setTaskIssue(checklist.id, task.id, event.target.value, task.photoDataUrl)}
-                        placeholder="Describe the defect, measurements taken, and the corrective action…"
-                        className="w-full resize-none rounded-md border border-[#d9c78a] bg-white p-2.5 text-sm font-medium text-[#293b4a] outline-none placeholder:text-[#a4a08c] focus:border-[#b58a1e] disabled:bg-[#f7f4ea]"
-                      />
-                    </label>
-                    <div className="flex flex-wrap items-center gap-3">
+      {/* Full-width execution table — six columns: TASK, STATUS, DATE, TIME,
+          REMARKS (text only), EVIDENCE (photo uploads only). Flush to the
+          workspace padding (20px / 14px mobile) to match the monitoring page. */}
+      <div className="w-full">
+        <div className="overflow-x-auto">
+          <div className="min-w-[1100px]">
+            {/* Column header row — heavier rule separates headings from task rows. */}
+            <div className="grid grid-cols-[minmax(0,1.7fr)_190px_130px_110px_minmax(240px,1fr)_170px] gap-x-3 border-b-2 border-[#e2e7ea] pb-2 pt-4 text-[10px] font-black uppercase tracking-[.14em] text-[#7c8994]">
+              <div>Task</div>
+              <div className="text-center">Status</div>
+              <div className="text-center">Date</div>
+              <div className="text-center">Time</div>
+              <div className="text-center">Remarks</div>
+              <div className="text-center">Evidence</div>
+            </div>
+
+            {checklist.tasks.map((task, index) => {
+              const answered = task.condition !== 'pending'
+              const isIssue = task.condition === 'issue'
+              const remarkMissing = isIssue && !task.findings?.trim()
+              return (
+                <div
+                  key={task.id}
+                  className="grid grid-cols-[minmax(0,1.7fr)_190px_130px_110px_minmax(240px,1fr)_170px] items-start gap-x-3 border-b border-[#e2e7ea] py-4 transition-colors duration-150 hover:bg-gray-50 focus-within:bg-gray-50"
+                >
+                  {/* TASK — fixed-width number so periods align; text wraps beside it. */}
+                  <div className="flex min-w-0 items-start pt-0.5">
+                    <span className="mr-3 w-6 shrink-0 text-right text-xs font-black text-[#7c8994]">{index + 1}.</span>
+                    <p className="min-w-0 text-sm font-semibold leading-snug text-[#283746]">{task.label}</p>
+                  </div>
+
+                  {/* STATUS — discrete pills; the active one floods solid green/red
+                      while its sibling stays a gray ghost. */}
+                  <div
+                    role="group"
+                    aria-label={`Condition for: ${task.label}`}
+                    className="flex items-center justify-center gap-2"
+                  >
+                    {CONDITION_OPTIONS.map((option) => {
+                      const active = task.condition === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={active}
+                          disabled={readOnly}
+                          onClick={() => setTaskCondition(checklist.id, task.id, option.value)}
+                          className={`flex items-center justify-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition disabled:pointer-events-none ${
+                            active
+                              ? option.active
+                              : 'border border-gray-300 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-500'
+                          }`}
+                        >
+                          {option.icon}
+                          {option.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* DATE — masked DD/MM/YYYY text; first status pick stamps it. */}
+                  <div className="flex items-center justify-center self-center text-center">
+                    <MaskedInput
+                      value={formatDdMmYyyy(task.loggedAt)}
+                      placeholder="--/--/----"
+                      maxLength={10}
+                      ariaLabel={`Inspection date for: ${task.label}`}
+                      disabled={readOnly}
+                      mask={maskDateDigits}
+                      parse={(display) => parseDateText(task, display)}
+                      onCommit={(date) => commitLoggedAt(task, date)}
+                    />
+                  </div>
+
+                  {/* TIME — masked strict 24-hour HH:mm text; auto-injects 22:18. */}
+                  <div className="flex items-center justify-center self-center text-center">
+                    <MaskedInput
+                      value={formatHhMm(task.loggedAt)}
+                      placeholder="--:--"
+                      maxLength={5}
+                      ariaLabel={`Inspection time for: ${task.label}`}
+                      disabled={readOnly}
+                      mask={maskTimeDigits}
+                      parse={(display) => parseTimeText(task, display)}
+                      onCommit={(date) => commitLoggedAt(task, date)}
+                    />
+                  </div>
+
+                  {/* REMARKS — text input only; photo evidence lives in the next column. */}
+                  <div className="min-w-0 pt-1.5">
+                    <input
+                      type="text"
+                      value={task.findings ?? ''}
+                      disabled={readOnly || !answered}
+                      aria-invalid={remarkMissing}
+                      placeholder={
+                        !answered ? 'Awaiting status…' : isIssue ? 'Describe defect…' : 'Optional remarks…'
+                      }
+                      onChange={(event) =>
+                        setTaskRemarks(checklist.id, task.id, event.target.value, task.photoDataUrl)
+                      }
+                      className={`w-full rounded-md border px-2.5 py-1.5 text-xs font-medium text-[#293b4a] outline-none transition placeholder:font-normal disabled:cursor-not-allowed disabled:bg-[#f7f8f9] disabled:text-[#9aa7b2] ${
+                        remarkMissing
+                          ? 'border-[#dc2626] bg-[#fff7f7] placeholder:text-[#e09090] focus:border-[#dc2626]'
+                          : 'border-[#cdd3d8] bg-white placeholder:text-[#9aa7b2] focus:border-[#5b8fb5]'
+                      }`}
+                    />
+                  </div>
+
+                  {/* EVIDENCE — photo uploads only, centered. Dash until an Issue
+                      claims a photo; then thumbnail (click to replace) + remove. */}
+                  <div className="flex min-w-0 items-center justify-center pt-1.5">
+                    {isIssue && task.photoDataUrl ? (
+                      <div className="flex items-center gap-1">
+                        <label
+                          title="Replace evidence photo"
+                          className="cursor-pointer rounded border border-[#d9c78a] bg-[#fffbe9] p-0.5 transition hover:bg-[#fff4cf]"
+                        >
+                          <img
+                            src={task.photoDataUrl}
+                            alt={`Defect evidence for: ${task.label}`}
+                            className="size-8 rounded object-cover"
+                          />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            disabled={readOnly}
+                            onChange={(event) => {
+                              attachPhoto(task, event.target.files?.[0])
+                              event.target.value = ''
+                            }}
+                          />
+                        </label>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            aria-label="Remove attached photo"
+                            title="Remove photo"
+                            onClick={() => setTaskRemarks(checklist.id, task.id, task.findings ?? '')}
+                            className="grid size-5 place-items-center rounded text-[#9a5b00] transition hover:bg-[#ffe9b8]"
+                          >
+                            <Trash2 size={12} aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    ) : isIssue && !readOnly ? (
                       <label
-                        className={`inline-flex items-center gap-2 rounded-md border border-[#d9c78a] bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-[#775000] transition hover:bg-[#fff7de] ${
-                          readOnly ? 'pointer-events-none opacity-70' : 'cursor-pointer'
-                        }`}
+                        title="Upload evidence photo"
+                        className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-[#c9971b] bg-[#fffbe9] px-2.5 py-1.5 text-[11px] font-bold text-[#8a5b00] transition hover:bg-[#fff1c9]"
                       >
-                        <Camera size={15} aria-hidden="true" />
-                        {task.photoDataUrl ? 'Replace Evidence' : 'Upload Evidence'}
+                        <Camera size={13} aria-hidden="true" />
+                        Upload Photo
                         <input
                           type="file"
                           accept="image/*"
                           className="sr-only"
-                          disabled={readOnly}
                           onChange={(event) => {
                             attachPhoto(task, event.target.files?.[0])
                             event.target.value = ''
                           }}
                         />
                       </label>
-                      {task.photoDataUrl && (
-                        <div className="flex items-center gap-2 rounded-md border border-[#d9c78a] bg-white p-1.5">
-                          <img
-                            src={task.photoDataUrl}
-                            alt={`Defect evidence for: ${task.label}`}
-                            className="size-12 rounded object-cover"
-                          />
-                          <button
-                            type="button"
-                            disabled={readOnly}
-                            aria-label="Remove attached photo"
-                            onClick={() => setTaskIssue(checklist.id, task.id, task.findings ?? '')}
-                            className="grid size-8 place-items-center rounded border border-[#e3c9a0] bg-[#fff7de] text-[#9a5b00] transition hover:bg-[#ffe9b8] disabled:opacity-60"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <span className="text-[#b6bfc7]">—</span>
+                    )}
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                </div>
+              )
+            })}
+          </div>
         </div>
-
-      {/* Manual timestamp override — backdate to the actual physical inspection time. */}
-      {tsTask && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) cancelTsEditor()
-          }}
-        >
-          <section className="signoff-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-time-title">
-            <header className="signoff-header">
-              <span className="signoff-icon" aria-hidden="true">
-                <Pencil size={18} />
-              </span>
-              <div>
-                <h2 id="edit-time-title">Edit Logged Time</h2>
-                <p>
-                  {tsTask.label} · {label}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="signoff-close"
-                aria-label="Close logged time editor"
-                onClick={cancelTsEditor}
-              >
-                <X size={16} />
-              </button>
-            </header>
-
-            <div className="signoff-body">
-              <p className="rounded-lg border border-[#e2e7ea] bg-[#f9fafb] p-3 text-sm font-bold leading-relaxed text-[#465560]">
-                Override the auto-captured time to the exact moment the physical inspection
-                was conducted. Backdating is allowed; future times are not.
-              </p>
-              <label className="signoff-field">
-                <span>Inspection Date &amp; Time <em>*</em></span>
-                <input
-                  ref={tsInputRef}
-                  className="signoff-control"
-                  type="datetime-local"
-                  value={tsDraft}
-                  max={toLocalInputValue(new Date().toISOString())}
-                  aria-label="Inspection date and time"
-                  aria-invalid={Boolean(tsError)}
-                  onChange={(event) => {
-                    setTsDraft(event.target.value)
-                    setTsError('')
-                  }}
-                />
-              </label>
-              {tsError && (
-                <span className="signoff-error" role="alert">
-                  {tsError}
-                </span>
-              )}
-            </div>
-
-            <footer className="signoff-actions">
-              <button type="button" className="button button-secondary" onClick={cancelTsEditor}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="button button-success"
-                disabled={!tsDraft}
-                onClick={saveTsEditor}
-              >
-                Save Timestamp
-              </button>
-            </footer>
-          </section>
-        </div>
-      )}
+      </div>
     </>
   )
 }

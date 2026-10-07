@@ -121,8 +121,9 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
               const loggedAt = task.condition === 'pending' ? task.loggedAt ?? new Date().toISOString() : task.loggedAt
               return condition === 'issue'
                 ? { ...task, condition, loggedAt }
-                : // Leaving (or never entering) the issue state discards defect data.
-                  { ...task, condition, loggedAt, findings: undefined, photoDataUrl: undefined }
+                : // Leaving the issue state drops defect evidence, but the optional
+                  // remark survives into Done (still useful inspection context).
+                  { ...task, condition, loggedAt, photoDataUrl: undefined }
             }),
           }
         }),
@@ -131,7 +132,7 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
     [activeVesselId],
   )
 
-  const setTaskIssue = useCallback(
+  const setTaskRemarks = useCallback(
     (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => {
       setChecklistsByVessel((current) => ({
         ...current,
@@ -140,9 +141,7 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
           return {
             ...checklist,
             tasks: checklist.tasks.map((task) =>
-              task.id === taskId
-                ? { ...task, condition: 'issue' as TaskCondition, findings: findings || undefined, photoDataUrl: photoDataUrl || undefined }
-                : task,
+              task.id === taskId ? { ...task, findings: findings || undefined, photoDataUrl: photoDataUrl || undefined } : task,
             ),
           }
         }),
@@ -235,13 +234,13 @@ export function EngineRoomProvider({ children }: { children: React.ReactNode }) 
       checklists,
       updateLog,
       setTaskCondition,
-      setTaskIssue,
+      setTaskRemarks,
       setTaskLoggedAt,
       signoffChecklist,
       signoff: signoffByVessel[activeVesselId] ?? null,
       setSignoff,
     }
-  }, [reviewStatus, hydraulicOilByVessel, setHydraulicOilAdded, robReceivedByVessel, setRobReceived, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, setTaskCondition, setTaskIssue, setTaskLoggedAt, signoffChecklist, signoffByVessel, setSignoff])
+  }, [reviewStatus, hydraulicOilByVessel, setHydraulicOilAdded, robReceivedByVessel, setRobReceived, logsByVessel, checklistsByVessel, activeVesselId, activeVessel, selectVessel, now, updateLog, setTaskCondition, setTaskRemarks, setTaskLoggedAt, signoffChecklist, signoffByVessel, setSignoff])
 
   return <EngineRoomContext.Provider value={value}>{children}</EngineRoomContext.Provider>
 }

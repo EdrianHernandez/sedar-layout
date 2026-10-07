@@ -195,14 +195,20 @@ export function ChiefEngineerPmsReviewPage() {
               >
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   <span className="w-5 shrink-0 text-right text-xs font-black text-[#7c8994]">{index + 1}.</span>
-                  <div className="grid gap-1.5">
-                    <p className="text-sm font-bold leading-snug text-[#283746]">{task.label}</p>
-                    {task.condition === 'issue' && task.findings && (
-                      <p className="border-l-2 border-[#efd181] bg-[#fffbe9] px-2.5 py-1.5 text-xs font-medium leading-relaxed text-[#775000]">
-                        {task.findings}
-                      </p>
-                    )}
-                  </div>
+                <div className="grid gap-1.5">
+                  <p className="text-sm font-bold leading-snug text-[#283746]">{task.label}</p>
+                  {task.condition === 'issue' && task.findings && (
+                    <p className="border-l-2 border-[#efd181] bg-[#fffbe9] px-2.5 py-1.5 text-xs font-medium leading-relaxed text-[#775000]">
+                      {task.findings}
+                    </p>
+                  )}
+                  {/* Optional remark captured alongside a Done result. */}
+                  {task.condition === 'done' && task.findings && (
+                    <p className="border-l-2 border-[#cdd3d8] bg-[#f7f8f9] px-2.5 py-1.5 text-xs font-medium leading-relaxed text-[#5f6873]">
+                      {task.findings}
+                    </p>
+                  )}
+                </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   <span

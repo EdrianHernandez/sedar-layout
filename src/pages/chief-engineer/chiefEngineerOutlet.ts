@@ -14,7 +14,7 @@ export interface ChiefEngineerOutletContext {
   checklists: PMSChecklist[]
   updateLog: (log: EngineLog) => void
   setTaskCondition: (checklistId: string, taskId: string, condition: TaskCondition) => void
-  setTaskIssue: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
+  setTaskRemarks: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
   setTaskLoggedAt: (checklistId: string, taskId: string, loggedAt: string) => void
   signoffChecklist: (checklistId: string) => void
 }

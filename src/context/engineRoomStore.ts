@@ -27,9 +27,12 @@ export interface EngineRoomContextValue {
   checklists: PMSChecklist[]
   updateLog: (updated: EngineLog) => void
   // Binary condition reporting: first pick stamps the task's logged time; picking a
-  // non-issue condition clears issue data (the timestamp survives switches/overrides).
+  // non-issue condition drops the photographic evidence (the timestamp survives
+  // switches/overrides, and optional remarks survive into the Done state).
   setTaskCondition: (checklistId: string, taskId: string, condition: TaskCondition) => void
-  setTaskIssue: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
+  // Condition-agnostic remarks capture: writes findings/photo WITHOUT touching the
+  // task's condition (optional notes on Done, mandatory defect text on Issue).
+  setTaskRemarks: (checklistId: string, taskId: string, findings: string, photoDataUrl?: string) => void
   // Manual timestamp override — backdate to when the physical inspection happened.
   setTaskLoggedAt: (checklistId: string, taskId: string, loggedAt: string) => void
   // Explicit sign-off: snapshots the odometer for the recurring modulo unlock; the
