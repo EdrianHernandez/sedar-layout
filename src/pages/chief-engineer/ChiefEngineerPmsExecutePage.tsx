@@ -19,20 +19,21 @@ interface ConditionOption {
 }
 
 // Masked text inputs replace the native pickers so the display format is
-// locale-proof: date always renders DD/MM/YYYY, time always 24-hour HH:mm
+// locale-proof: date always renders MM-DD-YYYY, time always 24-hour HH:mm
 // (22:18, never 10:18 PM). Each digit group sits in its own fixed-width slot
-// so the expected format reads at a glance — no native picker involved.
+// and empty slots show their format token (MM, DD, YYYY, HH), so the expected
+// format reads at a glance — no native picker involved.
 const SLOT_BASE =
   'inline-flex h-[26px] items-center justify-center rounded border bg-white text-[11px] font-black tabular-nums transition-colors'
 
-// Slot widths track the segment length (2 → DD/MM/HH, 4 → YYYY); the literals
+// Slot widths track the token length (2 → MM/DD/HH, 4 → YYYY); the literals
 // stay static so Tailwind can extract them.
 const slotWidth = (length: number) => (length >= 4 ? 'w-[40px]' : 'w-[23px]')
 
 const maskDateDigits = (input: string) => {
   const digits = input.replace(/\D/g, '').slice(0, 8)
   if (!digits) return ''
-  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/')
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('-')
 }
 
 const maskTimeDigits = (input: string) => {
@@ -45,7 +46,9 @@ const maskTimeDigits = (input: string) => {
 
 interface MaskedInputProps {
   value: string
-  segments: number[]
+  // One format token per slot; token length drives the digit slice and the
+  // placeholder shown while the slot is empty (e.g. MM | DD | YYYY).
+  slots: string[]
   separator: string
   maxLength: number
   ariaLabel: string
@@ -58,11 +61,11 @@ interface MaskedInputProps {
 // Controlled digit-masked field: the draft lives locally so typing is free, a
 // fully valid value commits immediately (subject to the future-time guard), and
 // blur reverts half-typed text to the stored value. The value renders as
-// fixed-width slots (DD | MM | YYYY, HH | MM) beneath an invisible input that
+// fixed-width slots (MM | DD | YYYY, HH | MM) beneath an invisible input that
 // captures typing, so the format is legible before and during entry.
 function MaskedInput({
   value,
-  segments,
+  slots,
   separator,
   maxLength,
   ariaLabel,
@@ -81,24 +84,26 @@ function MaskedInput({
     setDraft(value)
   }
 
-  // Slice the raw digit run into the declared segments (mirrors the masks,
-  // which always emit the same shape: 8 digits → DD/MM/YYYY, 4 → HH:mm).
+  // Slice the raw digit run into the declared slots (mirrors the masks,
+  // which always emit the same shape: 8 digits → MM-DD-YYYY, 4 → HH:mm).
   const digits = draft.replace(/\D/g, '')
   const parts: string[] = []
   let cursor = 0
-  for (const length of segments) {
-    parts.push(digits.slice(cursor, cursor + length))
-    cursor += length
+  for (const token of slots) {
+    parts.push(digits.slice(cursor, cursor + token.length))
+    cursor += token.length
   }
 
   return (
     <div
+      title={slots.join(separator)}
       className={`group relative inline-flex items-center gap-1 rounded-md p-px transition focus-within:ring-2 focus-within:ring-[#5b8fb5]/25 ${
         disabled ? 'opacity-60' : ''
       }`}
     >
       {parts.map((part, index) => {
-        const length = segments[index]
+        const token = slots[index]
+        const length = token.length
         const empty = part.length === 0
         const complete = part.length === length
         // Exactly one border-color class: hover only adds the group-hover
@@ -125,7 +130,9 @@ function MaskedInput({
                 empty ? 'text-[#b6bfc7]' : 'text-[#283746]'
               } ${!empty && complete ? 'bg-[#eef4f8]' : ''}`}
             >
-              {empty ? '-'.repeat(length) : part}
+              {/* Empty slot shows its format token; a half-typed slot shows the
+                  digits entered so far plus dashes for the remaining positions. */}
+              {empty ? token : part}
               {!empty && !complete && '-'.repeat(length - part.length)}
             </span>
           </div>
@@ -230,10 +237,10 @@ export function ChiefEngineerPmsExecutePage() {
 
   // Locale-proof display formats for the masked DATE / TIME cells.
   const pad2 = (value: number) => String(value).padStart(2, '0')
-  const formatDdMmYyyy = (iso?: string) => {
+  const formatMmDdYyyy = (iso?: string) => {
     if (!iso) return ''
     const date = new Date(iso)
-    return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`
+    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}-${date.getFullYear()}`
   }
   const formatHhMm = (iso?: string) => {
     if (!iso) return ''
@@ -254,13 +261,13 @@ export function ChiefEngineerPmsExecutePage() {
     setTaskLoggedAt(checklist.id, task.id, date.toISOString())
   }
 
-  // "DD/MM/YYYY" → Date, folded onto the row's existing time-of-day (now when
-  // unset). Round-trip check rejects impossible dates like 32/10/2026.
+  // "MM-DD-YYYY" → Date, folded onto the row's existing time-of-day (now when
+  // unset). Round-trip check rejects impossible dates like 13-40-2026.
   const parseDateText = (task: PMSTask, display: string): Date | null => {
-    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display)
+    const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(display)
     if (!match) return null
-    const day = Number(match[1])
-    const month = Number(match[2])
+    const month = Number(match[1])
+    const day = Number(match[2])
     const year = Number(match[3])
     const base = task.loggedAt ? new Date(task.loggedAt) : new Date()
     const date = new Date(year, month - 1, day, base.getHours(), base.getMinutes())
@@ -362,14 +369,15 @@ export function ChiefEngineerPmsExecutePage() {
       <div className="w-full">
         <div className="overflow-x-auto">
           <div className="min-w-[1100px]">
-            {/* Column header row — heavier rule separates headings from task rows. */}
-            <div className="grid grid-cols-[minmax(0,1.7fr)_190px_130px_110px_minmax(240px,1fr)_170px] gap-x-3 border-b-2 border-[#e2e7ea] pb-2 pt-4 text-[10px] font-black uppercase tracking-[.14em] text-[#7c8994]">
-              <div>Task</div>
-              <div className="text-center">Status</div>
-              <div className="text-center">Date</div>
-              <div className="text-center">Time</div>
-              <div className="text-center">Remarks</div>
-              <div className="text-center">Evidence</div>
+            {/* Column header row — heavier rule separates headings from task rows;
+                the gutter lives as cell padding (px-3) so both rows stay aligned. */}
+            <div className="grid grid-cols-[minmax(0,1.7fr)_204px_148px_92px_minmax(240px,1fr)_148px] border-b-2 border-[#e2e7ea] text-[10px] font-black uppercase tracking-[.14em] text-[#7c8994]">
+              <div className="px-3 pt-4 pb-2 text-center">Task</div>
+              <div className="px-3 pt-4 pb-2 text-center">Status</div>
+              <div className="px-3 pt-4 pb-2 text-center">Date</div>
+              <div className="px-3 pt-4 pb-2 text-center">Time</div>
+              <div className="px-3 pt-4 pb-2 text-center">Remarks</div>
+              <div className="px-3 pt-4 pb-2 text-center">Evidence</div>
             </div>
 
             {checklist.tasks.map((task, index) => {
@@ -379,12 +387,18 @@ export function ChiefEngineerPmsExecutePage() {
               return (
                 <div
                   key={task.id}
-                  className="grid grid-cols-[minmax(0,1.7fr)_190px_130px_110px_minmax(240px,1fr)_170px] items-start gap-x-3 border-b border-[#e2e7ea] py-4 transition-colors duration-150 hover:bg-gray-50 focus-within:bg-gray-50"
+                  className="grid grid-cols-[minmax(0,1.7fr)_204px_148px_92px_minmax(240px,1fr)_148px] border-b border-[#e2e7ea] transition-colors duration-150 hover:bg-gray-50 focus-within:bg-gray-50"
                 >
-                  {/* TASK — fixed-width number so periods align; text wraps beside it. */}
-                  <div className="flex min-w-0 items-start pt-0.5">
-                    <span className="mr-3 w-6 shrink-0 text-right text-xs font-black text-[#7c8994]">{index + 1}.</span>
-                    <p className="min-w-0 text-sm font-semibold leading-snug text-[#283746]">{task.label}</p>
+                  {/* TASK — left-aligned under the centered header; fixed-width
+                      number so periods align, inner block keeps it on the first
+                      line while the stretched cell centers the block vertically. */}
+                  <div className="flex min-w-0 items-center px-3 py-4">
+                    <div className="flex min-w-0 items-start pt-0.5">
+                      <span className="mr-3 w-6 shrink-0 text-right text-xs font-black text-[#7c8994]">
+                        {index + 1}.
+                      </span>
+                      <p className="min-w-0 text-sm font-semibold leading-snug text-[#283746]">{task.label}</p>
+                    </div>
                   </div>
 
                   {/* STATUS — discrete pills; the active one floods solid green/red
@@ -392,7 +406,7 @@ export function ChiefEngineerPmsExecutePage() {
                   <div
                     role="group"
                     aria-label={`Condition for: ${task.label}`}
-                    className="flex items-center justify-center gap-2"
+                    className="flex items-center justify-center gap-2 px-3 py-4"
                   >
                     {CONDITION_OPTIONS.map((option) => {
                       const active = task.condition === option.value
@@ -416,12 +430,12 @@ export function ChiefEngineerPmsExecutePage() {
                     })}
                   </div>
 
-                  {/* DATE — masked DD/MM/YYYY slots; first status pick stamps it. */}
-                  <div className="flex items-center justify-center self-center text-center">
+                  {/* DATE — masked MM-DD-YYYY slots; first status pick stamps it. */}
+                  <div className="flex items-center justify-center px-3 py-4 text-center">
                     <MaskedInput
-                      value={formatDdMmYyyy(task.loggedAt)}
-                      segments={[2, 2, 4]}
-                      separator="/"
+                      value={formatMmDdYyyy(task.loggedAt)}
+                      slots={['MM', 'DD', 'YYYY']}
+                      separator="-"
                       maxLength={10}
                       ariaLabel={`Inspection date for: ${task.label}`}
                       disabled={readOnly}
@@ -432,10 +446,10 @@ export function ChiefEngineerPmsExecutePage() {
                   </div>
 
                   {/* TIME — masked strict 24-hour HH:mm slots; auto-injects 22:18. */}
-                  <div className="flex items-center justify-center self-center text-center">
+                  <div className="flex items-center justify-center px-3 py-4 text-center">
                     <MaskedInput
                       value={formatHhMm(task.loggedAt)}
-                      segments={[2, 2]}
+                      slots={['HH', 'MM']}
                       separator=":"
                       maxLength={5}
                       ariaLabel={`Inspection time for: ${task.label}`}
@@ -447,7 +461,7 @@ export function ChiefEngineerPmsExecutePage() {
                   </div>
 
                   {/* REMARKS — text input only; photo evidence lives in the next column. */}
-                  <div className="min-w-0 pt-1.5">
+                  <div className="flex min-w-0 items-center px-3 py-4">
                     <input
                       type="text"
                       value={task.findings ?? ''}
@@ -469,7 +483,7 @@ export function ChiefEngineerPmsExecutePage() {
 
                   {/* EVIDENCE — photo uploads only, centered. Dash until an Issue
                       claims a photo; then thumbnail (click to replace) + remove. */}
-                  <div className="flex min-w-0 items-center justify-center pt-1.5">
+                  <div className="flex min-w-0 items-center justify-center px-3 py-4">
                     {isIssue && task.photoDataUrl ? (
                       <div className="flex items-center gap-1">
                         <label
