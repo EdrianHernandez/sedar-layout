@@ -20,9 +20,14 @@ interface ConditionOption {
 
 // Masked text inputs replace the native pickers so the display format is
 // locale-proof: date always renders DD/MM/YYYY, time always 24-hour HH:mm
-// (22:18, never 10:18 PM) — no calendar/clock icons exist to hide.
-const MASKED_INPUT_CLS =
-  'w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-center text-[11px] font-bold tabular-nums text-[#283746] outline-none focus:outline-none transition hover:border-[#cdd3d8] hover:bg-white focus:border-[#5b8fb5] focus:bg-white disabled:cursor-not-allowed disabled:text-[#9aa7b2]'
+// (22:18, never 10:18 PM). Each digit group sits in its own fixed-width slot
+// so the expected format reads at a glance — no native picker involved.
+const SLOT_BASE =
+  'inline-flex h-[26px] items-center justify-center rounded border bg-white text-[11px] font-black tabular-nums transition-colors'
+
+// Slot widths track the segment length (2 → DD/MM/HH, 4 → YYYY); the literals
+// stay static so Tailwind can extract them.
+const slotWidth = (length: number) => (length >= 4 ? 'w-[40px]' : 'w-[23px]')
 
 const maskDateDigits = (input: string) => {
   const digits = input.replace(/\D/g, '').slice(0, 8)
@@ -40,7 +45,8 @@ const maskTimeDigits = (input: string) => {
 
 interface MaskedInputProps {
   value: string
-  placeholder: string
+  segments: number[]
+  separator: string
   maxLength: number
   ariaLabel: string
   disabled?: boolean
@@ -51,10 +57,13 @@ interface MaskedInputProps {
 
 // Controlled digit-masked field: the draft lives locally so typing is free, a
 // fully valid value commits immediately (subject to the future-time guard), and
-// blur reverts half-typed text to the stored value.
+// blur reverts half-typed text to the stored value. The value renders as
+// fixed-width slots (DD | MM | YYYY, HH | MM) beneath an invisible input that
+// captures typing, so the format is legible before and during entry.
 function MaskedInput({
   value,
-  placeholder,
+  segments,
+  separator,
   maxLength,
   ariaLabel,
   disabled,
@@ -64,30 +73,87 @@ function MaskedInput({
 }: MaskedInputProps) {
   const [draft, setDraft] = useState(value)
   const [synced, setSynced] = useState(value)
+  const [focused, setFocused] = useState(false)
   // Re-sync during render when the stored value changes (status auto-stamp,
   // another field's commit) — no effect needed, typing never clobbers the draft.
   if (value !== synced) {
     setSynced(value)
     setDraft(value)
   }
+
+  // Slice the raw digit run into the declared segments (mirrors the masks,
+  // which always emit the same shape: 8 digits → DD/MM/YYYY, 4 → HH:mm).
+  const digits = draft.replace(/\D/g, '')
+  const parts: string[] = []
+  let cursor = 0
+  for (const length of segments) {
+    parts.push(digits.slice(cursor, cursor + length))
+    cursor += length
+  }
+
   return (
-    <input
-      type="text"
-      inputMode="numeric"
-      aria-label={ariaLabel}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      value={draft}
-      disabled={disabled}
-      onChange={(event) => {
-        const next = mask(event.target.value)
-        setDraft(next)
-        const parsed = parse(next)
-        if (parsed) onCommit(parsed)
-      }}
-      onBlur={() => setDraft(value)}
-      className={MASKED_INPUT_CLS}
-    />
+    <div
+      className={`group relative inline-flex items-center gap-1 rounded-md p-px transition focus-within:ring-2 focus-within:ring-[#5b8fb5]/25 ${
+        disabled ? 'opacity-60' : ''
+      }`}
+    >
+      {parts.map((part, index) => {
+        const length = segments[index]
+        const empty = part.length === 0
+        const complete = part.length === length
+        // Exactly one border-color class: hover only adds the group-hover
+        // variant when it would actually differ (never while focused/disabled).
+        const borderCls = focused
+          ? 'border-[#5b8fb5]'
+          : `${
+              empty
+                ? 'border-[#e2e7ea]'
+                : complete
+                  ? 'border-[#b9d4e4]'
+                  : 'border-[#cdd3d8]'
+            }${disabled ? '' : ' group-hover:border-[#5b8fb5]'}`
+        return (
+          <div key={index} className="flex items-center gap-1">
+            {index > 0 && (
+              <span aria-hidden="true" className="text-[11px] font-black text-[#9aa7b2]">
+                {separator}
+              </span>
+            )}
+            <span
+              aria-hidden="true"
+              className={`${SLOT_BASE} ${slotWidth(length)} ${borderCls} ${
+                empty ? 'text-[#b6bfc7]' : 'text-[#283746]'
+              } ${!empty && complete ? 'bg-[#eef4f8]' : ''}`}
+            >
+              {empty ? '-'.repeat(length) : part}
+              {!empty && !complete && '-'.repeat(length - part.length)}
+            </span>
+          </div>
+        )
+      })}
+
+      {/* Invisible input captures typing/caret; the slots above do the rendering. */}
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={ariaLabel}
+        maxLength={maxLength}
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => {
+          const next = mask(event.target.value)
+          setDraft(next)
+          const parsed = parse(next)
+          if (parsed) onCommit(parsed)
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false)
+          setDraft(value)
+        }}
+        className="absolute inset-0 h-full w-full cursor-text bg-transparent p-0 text-transparent caret-transparent opacity-0 outline-none"
+      />
+    </div>
   )
 }
 
@@ -350,11 +416,12 @@ export function ChiefEngineerPmsExecutePage() {
                     })}
                   </div>
 
-                  {/* DATE — masked DD/MM/YYYY text; first status pick stamps it. */}
+                  {/* DATE — masked DD/MM/YYYY slots; first status pick stamps it. */}
                   <div className="flex items-center justify-center self-center text-center">
                     <MaskedInput
                       value={formatDdMmYyyy(task.loggedAt)}
-                      placeholder="--/--/----"
+                      segments={[2, 2, 4]}
+                      separator="/"
                       maxLength={10}
                       ariaLabel={`Inspection date for: ${task.label}`}
                       disabled={readOnly}
@@ -364,11 +431,12 @@ export function ChiefEngineerPmsExecutePage() {
                     />
                   </div>
 
-                  {/* TIME — masked strict 24-hour HH:mm text; auto-injects 22:18. */}
+                  {/* TIME — masked strict 24-hour HH:mm slots; auto-injects 22:18. */}
                   <div className="flex items-center justify-center self-center text-center">
                     <MaskedInput
                       value={formatHhMm(task.loggedAt)}
-                      placeholder="--:--"
+                      segments={[2, 2]}
+                      separator=":"
                       maxLength={5}
                       ariaLabel={`Inspection time for: ${task.label}`}
                       disabled={readOnly}
