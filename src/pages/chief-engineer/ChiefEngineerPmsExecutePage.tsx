@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, Camera, Check, CheckCheck, Trash2 } from 'lucide-react'
 import type { PMSTask, TaskCondition } from '../../types/pmsChecklist'
@@ -124,6 +124,13 @@ export function ChiefEngineerPmsExecutePage() {
     useChiefEngineer()
   const navigate = useNavigate()
 
+  // Error sequence for the Review Summary action: targets the first task that
+  // blocks submission (row highlight + shake) until the timer clears it. Hooks
+  // live above the route-validation returns below.
+  const [validation, setValidation] = useState<{ taskId: string; kind: 'status' | 'remarks' } | null>(null)
+  const clearTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(clearTimer.current), [])
+
   // Route validation: unknown engine or interval (or a routine that is neither due
   // nor signed off — a stale deep link) bounces back to the dashboard.
   const engineTab = MACHINERY_TABS.find((tab) => tab.id.toLowerCase() === (engineParam ?? '').toLowerCase())
@@ -155,11 +162,38 @@ export function ChiefEngineerPmsExecutePage() {
   const remaining = remainingToDue(odometer, hours, checklist.completedOdometer)
   const label = PMS_INTERVAL_LABELS[interval]
 
-  // Submission moved to the full-screen Review Summary step — this button only
-  // routes there once every task carries a condition.
-  const openReview = () => {
-    if (readOnly || !allResolved || missingRemarks > 0) return
-    navigate(`/chief-engineer/pms/execute/${engineTab.id}/${interval}/review`)
+  // Submission moved to the full-screen Review Summary step — the button stays
+  // clickable and validates on click: instead of silently doing nothing, it
+  // scrolls the first blocking task into view, shakes it, and toasts why.
+  const handleReviewClick = () => {
+    if (readOnly) return
+    const firstProblem = checklist.tasks.find(
+      (task) =>
+        task.condition === 'pending' || (task.condition === 'issue' && !task.findings?.trim()),
+    )
+    if (!firstProblem) {
+      navigate(`/chief-engineer/pms/execute/${engineTab.id}/${interval}/review`)
+      return
+    }
+    const kind: 'status' | 'remarks' = firstProblem.condition === 'pending' ? 'status' : 'remarks'
+    // Clear first so repeated clicks restart the CSS shake/highlight animations.
+    setValidation(null)
+    window.requestAnimationFrame(() => setValidation({ taskId: firstProblem.id, kind }))
+    window.clearTimeout(clearTimer.current)
+    clearTimer.current = window.setTimeout(() => setValidation(null), 2200)
+    document
+      .querySelector(`[data-pms-row="${firstProblem.id}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (kind === 'remarks') {
+      document
+        .querySelector<HTMLInputElement>(`[data-remarks-input="${firstProblem.id}"]`)
+        ?.focus({ preventScroll: true })
+    }
+    notify(
+      kind === 'remarks'
+        ? 'Cannot proceed: Please provide remarks for all reported issues.'
+        : 'Cannot proceed: Please set a status (Done / Issue) for all tasks.',
+    )
   }
 
   // Locale-proof display formats for the masked DATE / TIME cells.
@@ -277,10 +311,9 @@ export function ChiefEngineerPmsExecutePage() {
             ) : (
               <button
                 type="button"
-                className="button button-lg border border-[#04121f] bg-[#082342] text-white shadow-sm transition hover:bg-[#0e3157] hover:shadow-md active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!allResolved || missingRemarks > 0}
+                className="button button-lg border border-[#04121f] bg-[#082342] text-white shadow-sm transition hover:bg-[#0e3157] hover:shadow-md active:translate-y-px"
                 title={reviewBlockedReason}
-                onClick={openReview}
+                onClick={handleReviewClick}
               >
                 <CheckCheck size={15} aria-hidden="true" /> Review Summary ({resolved}/{total}){' '}
                 {issueCount > 0 && (
@@ -318,7 +351,12 @@ export function ChiefEngineerPmsExecutePage() {
               return (
                 <div
                   key={task.id}
-                  className="grid grid-cols-[minmax(0,1.7fr)_204px_148px_92px_minmax(240px,1fr)_148px] border-b border-[#e2e7ea] transition-colors duration-150 hover:bg-gray-50 focus-within:bg-gray-50"
+                  data-pms-row={task.id}
+                  className={`grid grid-cols-[minmax(0,1.7fr)_204px_148px_92px_minmax(240px,1fr)_148px] border-b border-[#e2e7ea] transition-colors duration-150 ${
+                    validation?.taskId === task.id
+                      ? 'bg-red-50 hover:bg-red-50 focus-within:bg-red-50'
+                      : 'hover:bg-gray-50 focus-within:bg-gray-50'
+                  }`}
                 >
                   {/* TASK — left-aligned under the centered header; fixed-width
                       number so periods align, inner block keeps it on the first
@@ -337,7 +375,9 @@ export function ChiefEngineerPmsExecutePage() {
                   <div
                     role="group"
                     aria-label={`Condition for: ${task.label}`}
-                    className="flex items-center justify-center gap-2 px-3 py-4"
+                    className={`flex items-center justify-center gap-2 px-3 py-4 ${
+                      validation?.taskId === task.id && validation.kind === 'status' ? 'pms-shake' : ''
+                    }`}
                   >
                     {CONDITION_OPTIONS.map((option) => {
                       const active = task.condition === option.value
@@ -389,10 +429,13 @@ export function ChiefEngineerPmsExecutePage() {
                     />
                   </div>
 
-                  {/* REMARKS — text input only; photo evidence lives in the next column. */}
-                  <div className="flex min-w-0 items-center px-3 py-4">
+                  {/* REMARKS — text input only; photo evidence lives in the next
+                      column. An ISSUE row without remarks is invalid until fixed:
+                      red border, helper text, and (on a failed Review click) a shake. */}
+                  <div className="flex min-w-0 flex-col justify-center px-3 py-4">
                     <input
                       type="text"
+                      data-remarks-input={task.id}
                       value={task.findings ?? ''}
                       disabled={readOnly || !answered}
                       aria-invalid={remarkMissing}
@@ -406,8 +449,11 @@ export function ChiefEngineerPmsExecutePage() {
                         remarkMissing
                           ? 'border-[#dc2626] bg-[#fff7f7] placeholder:text-[#e09090] focus:border-[#dc2626]'
                           : 'border-[#cdd3d8] bg-white placeholder:text-[#9aa7b2] focus:border-[#5b8fb5]'
-                      }`}
+                      }${validation?.taskId === task.id && validation.kind === 'remarks' ? ' pms-shake' : ''}`}
                     />
+                    {remarkMissing && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500">* Required field</p>
+                    )}
                   </div>
 
                   {/* EVIDENCE — photo uploads only, centered. Dash until an Issue

@@ -948,6 +948,12 @@ td { border-top: 1px solid #e2e2e2; }
 .toast button { margin-left: 5px; padding: 4px; display: grid; border: 0; color: #66737e; background: transparent; cursor: pointer; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
+/* Horizontal shake for the first blocking field/row of the PMS Review Summary
+   validation. Disabled automatically for reduced-motion users by the global
+   prefers-reduced-motion rule further down. */
+@keyframes pms-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-3px); } 40%, 60% { transform: translateX(3px); } }
+.pms-shake { animation: pms-shake .45s cubic-bezier(.36, .07, .19, .97) both; }
+
 @media (max-width: 1050px) {
   .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .panels-grid { grid-template-columns: 1fr; }
