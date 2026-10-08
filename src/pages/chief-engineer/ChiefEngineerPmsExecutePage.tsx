@@ -18,22 +18,14 @@ interface ConditionOption {
   active: string
 }
 
-// Masked text inputs replace the native pickers so the display format is
-// locale-proof: date always renders MM-DD-YYYY, time always 24-hour HH:mm
-// (22:18, never 10:18 PM). Each digit group sits in its own fixed-width slot
-// and empty slots show their format token (MM, DD, YYYY, HH), so the expected
-// format reads at a glance — no native picker involved.
-const SLOT_BASE =
-  'inline-flex h-[26px] items-center justify-center rounded border bg-white text-[11px] font-black tabular-nums transition-colors'
-
-// Slot widths track the token length (2 → MM/DD/HH, 4 → YYYY); the literals
-// stay static so Tailwind can extract them.
-const slotWidth = (length: number) => (length >= 4 ? 'w-[40px]' : 'w-[23px]')
-
+// Single-field masked text inputs replace the native pickers so the display
+// format is locale-proof: date always renders MM/DD/YYYY, time always 24-hour
+// HH:mm (22:18, never 10:18 PM). The field is plain table text until focused —
+// no native picker involved.
 const maskDateDigits = (input: string) => {
   const digits = input.replace(/\D/g, '').slice(0, 8)
   if (!digits) return ''
-  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('-')
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/')
 }
 
 const maskTimeDigits = (input: string) => {
@@ -46,10 +38,7 @@ const maskTimeDigits = (input: string) => {
 
 interface MaskedInputProps {
   value: string
-  // One format token per slot; token length drives the digit slice and the
-  // placeholder shown while the slot is empty (e.g. MM | DD | YYYY).
-  slots: string[]
-  separator: string
+  placeholder: string
   maxLength: number
   ariaLabel: string
   disabled?: boolean
@@ -60,13 +49,11 @@ interface MaskedInputProps {
 
 // Controlled digit-masked field: the draft lives locally so typing is free, a
 // fully valid value commits immediately (subject to the future-time guard), and
-// blur reverts half-typed text to the stored value. The value renders as
-// fixed-width slots (MM | DD | YYYY, HH | MM) beneath an invisible input that
-// captures typing, so the format is legible before and during entry.
+// blur reverts half-typed text to the stored value. One seamless input — the
+// mask auto-inserts separators as digits are typed ("10082026" → "10/08/2026").
 function MaskedInput({
   value,
-  slots,
-  separator,
+  placeholder,
   maxLength,
   ariaLabel,
   disabled,
@@ -76,7 +63,6 @@ function MaskedInput({
 }: MaskedInputProps) {
   const [draft, setDraft] = useState(value)
   const [synced, setSynced] = useState(value)
-  const [focused, setFocused] = useState(false)
   // Re-sync during render when the stored value changes (status auto-stamp,
   // another field's commit) — no effect needed, typing never clobbers the draft.
   if (value !== synced) {
@@ -84,83 +70,24 @@ function MaskedInput({
     setDraft(value)
   }
 
-  // Slice the raw digit run into the declared slots (mirrors the masks,
-  // which always emit the same shape: 8 digits → MM-DD-YYYY, 4 → HH:mm).
-  const digits = draft.replace(/\D/g, '')
-  const parts: string[] = []
-  let cursor = 0
-  for (const token of slots) {
-    parts.push(digits.slice(cursor, cursor + token.length))
-    cursor += token.length
-  }
-
   return (
-    <div
-      title={slots.join(separator)}
-      className={`group relative inline-flex items-center gap-1 rounded-md p-px transition focus-within:ring-2 focus-within:ring-[#5b8fb5]/25 ${
-        disabled ? 'opacity-60' : ''
-      }`}
-    >
-      {parts.map((part, index) => {
-        const token = slots[index]
-        const length = token.length
-        const empty = part.length === 0
-        const complete = part.length === length
-        // Exactly one border-color class: hover only adds the group-hover
-        // variant when it would actually differ (never while focused/disabled).
-        const borderCls = focused
-          ? 'border-[#5b8fb5]'
-          : `${
-              empty
-                ? 'border-[#e2e7ea]'
-                : complete
-                  ? 'border-[#b9d4e4]'
-                  : 'border-[#cdd3d8]'
-            }${disabled ? '' : ' group-hover:border-[#5b8fb5]'}`
-        return (
-          <div key={index} className="flex items-center gap-1">
-            {index > 0 && (
-              <span aria-hidden="true" className="text-[11px] font-black text-[#9aa7b2]">
-                {separator}
-              </span>
-            )}
-            <span
-              aria-hidden="true"
-              className={`${SLOT_BASE} ${slotWidth(length)} ${borderCls} ${
-                empty ? 'text-[#b6bfc7]' : 'text-[#283746]'
-              } ${!empty && complete ? 'bg-[#eef4f8]' : ''}`}
-            >
-              {/* Empty slot shows its format token; a half-typed slot shows the
-                  digits entered so far plus dashes for the remaining positions. */}
-              {empty ? token : part}
-              {!empty && !complete && '-'.repeat(length - part.length)}
-            </span>
-          </div>
-        )
-      })}
-
-      {/* Invisible input captures typing/caret; the slots above do the rendering. */}
-      <input
-        type="text"
-        inputMode="numeric"
-        aria-label={ariaLabel}
-        maxLength={maxLength}
-        value={draft}
-        disabled={disabled}
-        onChange={(event) => {
-          const next = mask(event.target.value)
-          setDraft(next)
-          const parsed = parse(next)
-          if (parsed) onCommit(parsed)
-        }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => {
-          setFocused(false)
-          setDraft(value)
-        }}
-        className="absolute inset-0 h-full w-full cursor-text bg-transparent p-0 text-transparent caret-transparent opacity-0 outline-none"
-      />
-    </div>
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      value={draft}
+      disabled={disabled}
+      onChange={(event) => {
+        const next = mask(event.target.value)
+        setDraft(next)
+        const parsed = parse(next)
+        if (parsed) onCommit(parsed)
+      }}
+      onBlur={() => setDraft(value)}
+      className="mx-auto w-full max-w-[100px] rounded border border-transparent bg-transparent px-2 py-1.5 text-center text-sm text-slate-800 outline-none transition placeholder:text-[#b3bcc4] focus:border-gray-300 focus:bg-white focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:text-[#9aa7b2]"
+    />
   )
 }
 
@@ -240,7 +167,7 @@ export function ChiefEngineerPmsExecutePage() {
   const formatMmDdYyyy = (iso?: string) => {
     if (!iso) return ''
     const date = new Date(iso)
-    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}-${date.getFullYear()}`
+    return `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}/${date.getFullYear()}`
   }
   const formatHhMm = (iso?: string) => {
     if (!iso) return ''
@@ -261,10 +188,10 @@ export function ChiefEngineerPmsExecutePage() {
     setTaskLoggedAt(checklist.id, task.id, date.toISOString())
   }
 
-  // "MM-DD-YYYY" → Date, folded onto the row's existing time-of-day (now when
-  // unset). Round-trip check rejects impossible dates like 13-40-2026.
+  // "MM/DD/YYYY" → Date, folded onto the row's existing time-of-day (now when
+  // unset). Round-trip check rejects impossible dates like 13/40/2026.
   const parseDateText = (task: PMSTask, display: string): Date | null => {
-    const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(display)
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display)
     if (!match) return null
     const month = Number(match[1])
     const day = Number(match[2])
@@ -302,25 +229,29 @@ export function ChiefEngineerPmsExecutePage() {
 
   return (
     <>
-      {/* Full-bleed sticky top-bar: solid background + rule so checklist rows scroll
-          cleanly underneath; -mx/px restores the workspace padding so the inner
-          content sits flush with the table below (same gutters as the monitoring page).
-          Built with pure Tailwind — the legacy .tech-* header rules are unlayered and
-          would outbid layered utilities, blocking the condensed styling. */}
-      <header className="sticky top-0 z-10 -mx-5 border-b border-[#e2e7ea] bg-white px-5 py-2.5 max-md:-mx-3.5 max-md:px-3.5">
-        <div className="flex w-full items-start justify-between gap-4">
+      {/* Full-bleed sticky top-bar: solid background + crisp 2px rule so checklist
+          rows scroll cleanly underneath; -mx/px restores the workspace padding so the
+          inner content sits flush with the table below (same gutters as the monitoring
+          page). Palette: brand navy #082342, brand orange #ff4d2f, grays, white.
+          Built with pure Tailwind — the legacy .tech-* and .button-success rules are
+          unlayered and would outbid layered utilities, so recolored elements drop those
+          classes instead of trying to override them. */}
+      <header className="sticky top-0 z-10 -mx-5 border-b-2 border-slate-300 bg-white px-5 py-4 shadow-[0_1px_3px_rgba(2,18,36,0.06)] max-md:-mx-3.5 max-md:px-3.5">
+        <div className="flex w-full items-center justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="truncate text-[19px] font-bold leading-tight text-[#152f48]">
-              {engineTab.label} — {label}
+            <h1 className="truncate text-[19px] leading-tight">
+              <span className="font-medium text-gray-500">{engineTab.label}</span>
+              <span className="mx-1.5 font-medium text-gray-400">—</span>
+              <span className="font-bold text-[#082342]">{label}</span>
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-[#5f6873]">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-slate-500">
               <span className="tabular-nums">Odometer: {odometer.toFixed(1)} HRS</span>
               {readOnly ? (
                 <span className="tech-status-badge tech-status-completed">
                   Signed Off · Next due {nextDue.toLocaleString('en-US')} H
                 </span>
               ) : due ? (
-                <span className="tech-status-badge tech-status-overdue inline-flex items-center gap-1.5">
+                <span className="tech-status-badge inline-flex items-center gap-1.5 bg-[#ff4d2f] text-white shadow-sm">
                   <AlertTriangle size={12} aria-hidden="true" /> Due Now
                 </span>
               ) : (
@@ -334,26 +265,26 @@ export function ChiefEngineerPmsExecutePage() {
           <div className="flex shrink-0 items-center gap-3">
             <Link
               to="/chief-engineer/pms"
-              className="group inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-[#5f6873] transition-colors hover:text-[#283746]"
+              className="group inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-gray-500 transition-colors hover:text-slate-900"
             >
               <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
               Back to Dashboard
             </Link>
             {readOnly ? (
-              <span className="whitespace-nowrap text-[11px] font-bold tabular-nums text-[#5f6873]">
+              <span className="whitespace-nowrap text-[11px] font-bold tabular-nums text-slate-500">
                 {resolved}/{total} Resolved
               </span>
             ) : (
               <button
                 type="button"
-                className="button button-success button-lg disabled:cursor-not-allowed disabled:opacity-60"
+                className="button button-lg border border-[#04121f] bg-[#082342] text-white shadow-sm transition hover:bg-[#0e3157] hover:shadow-md active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={!allResolved || missingRemarks > 0}
                 title={reviewBlockedReason}
                 onClick={openReview}
               >
                 <CheckCheck size={15} aria-hidden="true" /> Review Summary ({resolved}/{total}){' '}
                 {issueCount > 0 && (
-                  <span className="font-black text-[#ffe8a3]">
+                  <span className="font-black text-[#ff9b84]">
                     • {issueCount} Issue{issueCount > 1 ? 's' : ''}
                   </span>
                 )}
@@ -430,12 +361,11 @@ export function ChiefEngineerPmsExecutePage() {
                     })}
                   </div>
 
-                  {/* DATE — masked MM-DD-YYYY slots; first status pick stamps it. */}
+                  {/* DATE — single seamless MM/DD/YYYY masked field; first status pick stamps it. */}
                   <div className="flex items-center justify-center px-3 py-4 text-center">
                     <MaskedInput
                       value={formatMmDdYyyy(task.loggedAt)}
-                      slots={['MM', 'DD', 'YYYY']}
-                      separator="-"
+                      placeholder="MM/DD/YYYY"
                       maxLength={10}
                       ariaLabel={`Inspection date for: ${task.label}`}
                       disabled={readOnly}
@@ -445,12 +375,11 @@ export function ChiefEngineerPmsExecutePage() {
                     />
                   </div>
 
-                  {/* TIME — masked strict 24-hour HH:mm slots; auto-injects 22:18. */}
+                  {/* TIME — single seamless strict 24-hour HH:mm masked field; auto-injects 22:18. */}
                   <div className="flex items-center justify-center px-3 py-4 text-center">
                     <MaskedInput
                       value={formatHhMm(task.loggedAt)}
-                      slots={['HH', 'MM']}
-                      separator=":"
+                      placeholder="HH:MM"
                       maxLength={5}
                       ariaLabel={`Inspection time for: ${task.label}`}
                       disabled={readOnly}
